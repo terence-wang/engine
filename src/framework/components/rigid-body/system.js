@@ -175,11 +175,20 @@ Object.assign(pc, function () {
         onLibraryLoaded: function () {
             // Create the Ammo physics world
             if (typeof Ammo !== 'undefined') {
+                /*
                 var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
                 var dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
                 var overlappingPairCache = new Ammo.btDbvtBroadphase();
                 var solver = new Ammo.btSequentialImpulseConstraintSolver();
                 this.dynamicsWorld = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+                */                  
+                var collisionConfiguration = new Ammo.btSoftBodyRigidBodyCollisionConfiguration();
+                var dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
+                var broadphase = new Ammo.btDbvtBroadphase();
+                var solver = new Ammo.btSequentialImpulseConstraintSolver();
+                var softBodySolver = new Ammo.btDefaultSoftBodySolver();
+                this.dynamicsWorld = new Ammo.btSoftRigidDynamicsWorld( dispatcher, broadphase, solver, collisionConfiguration, softBodySolver);
+                this.softBodyHelpers = new Ammo.btSoftBodyHelpers();
 
                 // Lazily create temp vars
                 ammoRayStart = new Ammo.btVector3();
@@ -481,7 +490,8 @@ Object.assign(pc, function () {
             }
 
             // Update the transforms of all bodies
-            this.dynamicsWorld.stepSimulation(dt, this.maxSubSteps, this.fixedTimeStep);
+            //this.dynamicsWorld.stepSimulation(dt, this.maxSubSteps, this.fixedTimeStep);
+            this.dynamicsWorld.stepSimulation(dt);
 
             // Update the transforms of all entities referencing a body
             var components = this.store;

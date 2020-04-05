@@ -6,7 +6,7 @@ mat4 getModelMatrix() {
     #ifdef DYNAMICBATCH
         return getBoneMatrix(vertex_boneIndices);
     #elif defined(SKIN)
-        return matrix_model * (getBoneMatrix(vertex_boneIndices.x) * vertex_boneWeights.x +
+        return (dot(vertex_boneWeights,vertex_boneWeights)<=0.001)? matrix_model : matrix_model * (getBoneMatrix(vertex_boneIndices.x) * vertex_boneWeights.x +
                getBoneMatrix(vertex_boneIndices.y) * vertex_boneWeights.y +
                getBoneMatrix(vertex_boneIndices.z) * vertex_boneWeights.z +
                getBoneMatrix(vertex_boneIndices.w) * vertex_boneWeights.w);

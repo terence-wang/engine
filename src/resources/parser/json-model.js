@@ -543,7 +543,7 @@ Object.assign(pc, function () {
 
                 // Create the vertex buffer
                 var numVertices = vertexData.position.data.length / vertexData.position.components;
-                var vertexBuffer = new pc.VertexBuffer(this._device, vertexFormat, numVertices);
+                var vertexBuffer = new pc.VertexBuffer(this._device, vertexFormat, numVertices, pc.BUFFER_DYNAMIC);
 
                 var iterator = new pc.VertexIterator(vertexBuffer);
                 for (j = 0; j < numVertices; j++) {
@@ -597,10 +597,10 @@ Object.assign(pc, function () {
             }
             if (numIndices > 0) {
                 if (maxVerts > 0xFFFF && this._device.extUintElement) {
-                    indexBuffer = new pc.IndexBuffer(this._device, pc.INDEXFORMAT_UINT32, numIndices);
+                    indexBuffer = new pc.IndexBuffer(this._device, pc.INDEXFORMAT_UINT32, numIndices, pc.BUFFER_DYNAMIC);
                     indexData = new Uint32Array(indexBuffer.lock());
                 } else {
-                    indexBuffer = new pc.IndexBuffer(this._device, pc.INDEXFORMAT_UINT16, numIndices);
+                    indexBuffer = new pc.IndexBuffer(this._device, pc.INDEXFORMAT_UINT16, numIndices, pc.BUFFER_DYNAMIC);
                     indexData = new Uint16Array(indexBuffer.lock());
                 }
             }

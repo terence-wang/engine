@@ -30,18 +30,23 @@ uniform float render_pass; // multi-pass render pass
 
 vec4 applyMsdf(vec4 color) {
     // sample the field
-    vec3 tsample = texture2D(texture_msdfMap, vUv0).rgb;
+    vec4 tsample = texture2D(texture_msdfMap, vUv0);
+    //tsample= vec4(tsample.rgb*(1.0/tsample.a), tsample.a);
     vec2 uvShdw = vUv0 - shadow_offset;
-    vec3 ssample = texture2D(texture_msdfMap, uvShdw).rgb;
+    vec4 ssample = texture2D(texture_msdfMap, uvShdw);
+    //ssample= vec4(ssample.rgb*(1.0/ssample.a), ssample.a);
     // get the signed distance value
     float sigDist = median(tsample.r, tsample.g, tsample.b);
     float sigDistShdw = median(ssample.r, ssample.g, ssample.b);
 
-    float tsamplea = texture2D(texture_msdfMap, vUv0).a;
-    float ssamplea = texture2D(texture_msdfMap, uvShdw).a;
+    if (0==1)//render_pass==0.0)
+    {
+        //float tsamplea = texture2D(texture_msdfMap, vUv0).a;
+        //float ssamplea = texture2D(texture_msdfMap, uvShdw).a;
 
-    sigDist=mix(sigDist,tsamplea, clamp((0.4-tsamplea)*10.0,0.0,1.0));
-    sigDistShdw=mix(sigDistShdw,ssamplea, clamp((0.4-ssamplea)*10.0,0.0,1.0));
+        sigDist=mix(sigDist,tsample.a, clamp((0.4-tsample.a)*10.0,0.0,1.0));
+        sigDistShdw=mix(sigDistShdw,ssample.a, clamp((0.4-ssample.a)*10.0,0.0,1.0));
+    }
 
     #ifdef USE_FWIDTH
         // smoothing depends on size of texture on screen

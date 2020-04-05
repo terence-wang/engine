@@ -113,13 +113,13 @@ Object.assign(pc, function () {
 
         // order vertexDesc to match the rest of the engine
         var elementOrder = [
+            pc.SEMANTIC_BLENDWEIGHT,
             pc.SEMANTIC_POSITION,
             pc.SEMANTIC_NORMAL,
             pc.SEMANTIC_TANGENT,
             pc.SEMANTIC_BINORMAL,
             pc.SEMANTIC_COLOR,
             pc.SEMANTIC_BLENDINDICES,
-            pc.SEMANTIC_BLENDWEIGHT,
             pc.SEMANTIC_TEXCOORD0,
             pc.SEMANTIC_TEXCOORD1
         ];
@@ -198,7 +198,8 @@ Object.assign(pc, function () {
         var vertexBuffer = new pc.VertexBuffer(device,
                                                new pc.VertexFormat(device, vertexDesc),
                                                numVertices,
-                                               pc.BUFFER_STATIC);
+                                               pc.BUFFER_DYNAMIC);
+                                               //pc.BUFFER_STATIC);
 
         var i, j, k;
         var source, target, sourceOffset;
@@ -329,7 +330,7 @@ Object.assign(pc, function () {
                     indexFormat = pc.INDEXFORMAT_UINT32;
                 }
                 var numIndices = indices.length;
-                var indexBuffer = new pc.IndexBuffer(device, indexFormat, numIndices, pc.BUFFER_STATIC, indices);
+                var indexBuffer = new pc.IndexBuffer(device, indexFormat, numIndices, pc.BUFFER_DYNAMIC/*BUFFER_STATIC*/, indices);
                 mesh.indexBuffer[0] = indexBuffer;
                 mesh.primitive[0].count = indices.length;
             } else {
