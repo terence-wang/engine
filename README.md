@@ -1,11 +1,22 @@
-![PlayCanvas](http://static.playcanvas.com/images/logo/Playcanvas_LOGOSET_SMALL-06.png)
+<div align="center">
+
+<img width="200" src="https://s3-eu-west-1.amazonaws.com/static.playcanvas.com/platform/images/logo/playcanvas-logo-medium.png"/>
 
 # PlayCanvas WebGL Game Engine
 
 PlayCanvas is an open-source game engine. It uses HTML5 and WebGL to run games and other interactive 3D content in any mobile or desktop browser.
 
-## Project Showcase
+[![CircleCI](https://circleci.com/gh/circleci/circleci-docs.svg?style=svg)](https://circleci.com/gh/circleci/circleci-docs)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/playcanvas/engine)
+![GitHub repo size](https://img.shields.io/github/repo-size/playcanvas/engine)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/playcanvas/engine)
 
+![GitHub issues](https://img.shields.io/github/issues/playcanvas/engine)
+![node-current](https://img.shields.io/node/v/playcanvas)
+![Twitter Follow](https://img.shields.io/twitter/follow/playcanvas?style=social)
+#
+
+## Project Showcase
 Many games and apps have been published using the PlayCanvas engine. Here is a small selection:
 
 [![Seemore](https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/projects/14705/319531/O4J4VU-image-25.jpg)](https://playcanv.as/p/MflWvdTW/) [![After The Flood](https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/projects/14928/440410/98554E-image-25.jpg)](https://playcanv.as/p/44MRmJRU/) [![Casino](https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/projects/14928/349824/U88HJQ-image-25.jpg)](https://playcanv.as/p/LpmXGUe6/)  
@@ -13,48 +24,51 @@ Many games and apps have been published using the PlayCanvas engine. Here is a s
 [![Car](https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/projects/12/347824/7ULQ3Y-image-25.jpg)](https://playcanv.as/p/RqJJ9oU9/) [![Star-Lord](https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/projects/12/333626/BGQN9H-image-25.jpg)](https://playcanv.as/p/SA7hVBLt/) [![Global Illumination](http://s3-eu-west-1.amazonaws.com/images.playcanvas.com/projects/4373/625081/6AB32D-image-25.jpg)](https://playcanv.as/p/ZV4PW6wr/ )  
 
 
+###  You can see more games on the [PlayCanvas website](https://playcanvas.com/explore).
 
-You can see more games on the [PlayCanvas website](https://playcanvas.com/explore).
+</div>
 
-## Users
+# 👨‍💻 Users
 
 PlayCanvas is used by leading companies in video games, advertising and visualization such as:  
 **Animech, ARM, Disney, Facebook, IGT, King, Miniclip, Leapfrog, Mozilla, Nickelodeon, Nordeus, PikPok, PlaySide Studios, Polaris, Samsung, Spry Fox, Zeptolab, Zynga**
 
-## Features
+<img src="https://assets.website-files.com/58e247041eb2474a46dcf179/5d0b23a651a0cee160d4a59c_small-logo-withtext.svg" height="50"/>
 
-PlayCanvas is a fully featured game engine.
+<img src="https://www.arm.com/-/media/global/logos/Arm-logo-black-pms432.svg?h=92&w=300&hash=BE156D441AF03AF80DCA836D4FF8B2B7A58A9023&hash=BE156D441AF03AF80DCA836D4FF8B2B7A58A9023&la=en&revision=dfb81f02-b74e-45f6-8523-6d2037b838f1" height="50"/>
 
-* **Graphics**
-    * WebGL 2.0 based renderer (with fallback to WebGL 1.0)
-    * Physically based rendering (PBR)
-    * Directional, point and spot lights
-    * Shadow mapping (PCF and VSM implementations)
-    * Runtime lightmap baking
-    * Static, skinned and morphed meshes
-    * GPU Particle engine with editor
-    * PostFX library: bloom, edge detect, FXAA, vignette, etc
-    * Seamless default material support from Maya, 3DS Max, Blender, etc.
-    * Full model export pipeline from Maya, 3DS Max, Blender, etc via [Assets User Manual](https://developer.playcanvas.com/en/user-manual/assets/)
-* **Collision & Physics**
-    * Full integration with 3D rigid-body physics engine [ammo.js](https://github.com/kripken/ammo.js)
-* **Audio**
-    * 3D Positional audio via Web Audio API
-* **Resource Loading**
-    * Simple and powerful resource loading
-    * Streaming of individual assets
-    * Asset Variants - loads compressed textures (DXT, PVR, ETC1, ETC2) based on platform support
-* **Entity / Component System**
-    * Built-in components: model, sound, animation, camera, collision, light, rigidbody, script, particlesystem
-* **Scripting system**
-    * Write game behaviors by attaching JavaScript to game entities
-    * Live code hot-swap enables rapid iteration
-* **Input**
-    * Mouse, Keyboard, Touch, Gamepad, VR
+<img src="https://i.pinimg.com/originals/54/dc/48/54dc48e0667516d7cd33d400ef9d8e20.png" height="50"/>
+<img src="https://assets.website-files.com/58e247041eb2474a46dcf179/5d0b23a651a0cee160d4a59c_small-logo-withtext.svg" height="50"/>
 
-## Usage
+<img src="https://facebookbrand.com/wp-content/uploads/2019/04/f_logo_RGB-Hex-Blue_512.png?w=512&h=512" height="50"/>
 
-Here's a super-simple Hello World example - a spinning cube!
+<img src="https://upload.wikimedia.org/wikipedia/en/thumb/3/32/Zynga_logo.jpg/250px-Zynga_logo.jpg" height="50"/>
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Miniclip.svg/1280px-Miniclip.svg.png" height="50"/>
+
+<img src="https://upload.wikimedia.org/wikipedia/en/thumb/3/3e/LeapFrog_Enterprises.svg/1200px-LeapFrog_Enterprises.svg.png" height="50"/>
+
+<img src="https://3u26hb1g25wn1xwo8g186fnd-wpengine.netdna-ssl.com/files/2019/06/mozilla-logo-bw-rgb-1024x293.png" height="50"/>
+
+<img src="https://www.freepnglogos.com/uploads/nickelodeon-schweiz-logo-png-14.png" height="50"/>
+
+<img src="https://nordeus.com/wp-content/uploads/2017/09/nordeus-positive-logo-2-rgb.png" height="50"/>
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/PikPok_logo.svg/1200px-PikPok_logo.svg.png" height="50"/>
+
+<img src="https://motorcycle-logos.com/wp-content/uploads/2017/05/Polaris-Logo-768x531.png" height="50"/>
+
+<img src="https://openconnectivity.org/wp-content/uploads/2015/09/samsung-logo-4.png" height="50"/>
+
+<img src="https://upload.wikimedia.org/wikipedia/en/5/51/Logo_of_Spry_Fox_Video_Game_Company.png" height="50"/>
+
+<img src="https://upload.wikimedia.org/wikipedia/en/thumb/1/18/ZeptoLab.svg/1200px-ZeptoLab.svg.png" height="50"/>
+
+# 🚀 Getting Started
+
+## Here's a super-simple Hello World example - a spinning cube!
+
+<img src="https://i.imgur.com/U0TCvdr.gif"/>
 
 ```html
 <!DOCTYPE html>
@@ -122,9 +136,47 @@ Here's a super-simple Hello World example - a spinning cube!
 </html>
 ```
 
-Want to play with the code yourself? Edit it on [CodePen](https://codepen.io/playcanvas/pen/NPbxMj).
+## Want to play with the code yourself? Edit it on [CodePen](https://codepen.io/playcanvas/pen/NPbxMj).
 
-## How to build
+# 💫 Features
+
+PlayCanvas is a fully featured game engine.
+
+## 👾 Graphics
+
+* WebGL 2.0 based renderer (with fallback to WebGL 1.0)
+* Physically based rendering (PBR)
+* Directional, point and spot lights
+* Shadow mapping (PCF and VSM implementations)
+* Runtime lightmap baking
+* Static, skinned and morphed meshes
+* GPU Particle engine with editor
+* PostFX library: bloom, edge detect, FXAA, vignette, etc
+* Seamless default material support from Maya, 3DS Max, Blender, etc.
+* Full model export pipeline from Maya, 3DS Max, Blender, etc via [Assets User Manual](https://developer.playcanvas.com/en/user-manual/assets/)
+
+## 🎯 Collision & Physics
+* Full integration with 3D rigid-body physics engine [ammo.js](https://github.com/kripken/ammo.js)
+
+## 🔊 Audio
+* 3D Positional audio via Web Audio API
+
+## 📦 Resource Loading
+* Simple and powerful resource loading
+* Streaming of individual assets
+* Asset Variants - loads compressed textures (DXT, PVR, ETC1, ETC2) based on platform support
+
+## 🧑‍🍳 Entity / Component System
+* Built-in components: model, sound, animation, camera, collision, light, rigidbody, script, particlesystem
+
+## 📟 Scripting system
+* Write game behaviors by attaching JavaScript to game entities
+* Live code hot-swap enables rapid iteration
+
+## 🎮 Input
+* Mouse, Keyboard, Touch, Gamepad, VR
+
+# How to build
 
 Ensure you have [Node.js](https://nodejs.org) installed. Then, install all of the required Node.js dependencies:
 
@@ -155,7 +207,7 @@ Specific engine versions:
 
 To convert any models created using a 3D modelling package see [this page](https://developer.playcanvas.com/en/engine/) in the developer documentation.
 
-## How to run tests
+# 🧪 How to run tests
 
 PlayCanvas makes use of Karma for running unit tests, and provides three test ways of executing them depending on what phase of development you're in:
 
@@ -174,17 +226,17 @@ PlayCanvas makes use of Karma for running unit tests, and provides three test wa
     # an up-to-date build.
     npm run test:release
 
-## Documentation
+# 📚 Documentation
 
 Full documentation available on the [PlayCanvas Developer](https://developer.playcanvas.com) site including [API reference](https://developer.playcanvas.com/en/api/). To build a local copy of the API reference manual to the docs folder, do:
 
     npm run docs
 
-## Tutorials & Examples
+# 💡 Tutorials & Examples
 
 See all the [tutorials](https://developer.playcanvas.com/tutorials/) here.
 
-## TypeScript Bindings
+# <img src="https://raw.githubusercontent.com/remojansen/logo.ts/master/ts.png" height="24"/> TypeScript Bindings
 
 You can develop TypeScript applications against the PlayCanvas engine. To generate a TypeScript definitions file for the entire API, do:
 
@@ -192,21 +244,21 @@ You can develop TypeScript applications against the PlayCanvas engine. To genera
 
 This will output to build/output/playcanvas.d.ts
 
-## Getting Help
+#  💁 Getting Help
 
 [**Forums**](https://forum.playcanvas.com) - Use the forum to ask/answer questions about PlayCanvas.
 
-## Contributing
+# 🤲 Contributing
 
 Want to help us make the best 3D engine on the web? Great!
 Check out [CONTRIBUTING.md](https://github.com/playcanvas/engine/blob/master/.github/CONTRIBUTING.md) that will get you started.
 And look for ["good first PR"](https://github.com/playcanvas/engine/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+PR%22)  label in Issues.
 
-### Github Issues
+## Github Issues
 
 Please use [Github Issues](https://github.com/playcanvas/engine/issues) to report bugs or request features.
 
-### Reporting bugs
+## Reporting bugs
 
 Please follow these steps to report a bug
 
@@ -216,10 +268,11 @@ Please follow these steps to report a bug
 
 3. **Share as much information as possible** - everything little helps, OS, browser version, all that stuff.
 
-## PlayCanvas Platform
+# <img src="https://s3-eu-west-1.amazonaws.com/static.playcanvas.com/platform/images/logo/playcanvas-logo-medium.png" height="24"/> PlayCanvas Platform
+
 
 The PlayCanvas Engine is an open source engine which you can use to create games and 3D visualisation in the browser. In addition to the engine we also make the [PlayCanvas development platform](https://playcanvas.com/) which features an Visual Editor, asset management, code editing, hosting and publishing services.
 
-## License
+# 🖋️ License
 
 The PlayCanvas Engine is released under the [MIT](https://opensource.org/licenses/MIT) license. See LICENSE file.
