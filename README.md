@@ -14,7 +14,7 @@ PlayCanvas is an open-source game engine. It uses HTML5 and WebGL to run games a
 ![GitHub issues](https://img.shields.io/github/issues/playcanvas/engine)
 ![node-current](https://img.shields.io/node/v/playcanvas)
 ![Twitter Follow](https://img.shields.io/twitter/follow/playcanvas?style=social)
-#
+
 
 ## Project Showcase
 Many games and apps have been published using the PlayCanvas engine. Here is a small selection:
@@ -66,7 +66,7 @@ PlayCanvas is used by leading companies in video games, advertising and visualiz
 
 # 🚀 Getting Started
 
-## Here's a super-simple Hello World example - a spinning cube!
+### Here's a super-simple Hello World example - a spinning cube!
 
 <img src="https://i.imgur.com/U0TCvdr.gif"/>
 
@@ -142,7 +142,7 @@ PlayCanvas is used by leading companies in video games, advertising and visualiz
 
 PlayCanvas is a fully featured game engine.
 
-## 👾 Graphics
+### 👾 Graphics
 
 * WebGL 2.0 based renderer (with fallback to WebGL 1.0)
 * Physically based rendering (PBR)
@@ -155,25 +155,25 @@ PlayCanvas is a fully featured game engine.
 * Seamless default material support from Maya, 3DS Max, Blender, etc.
 * Full model export pipeline from Maya, 3DS Max, Blender, etc via [Assets User Manual](https://developer.playcanvas.com/en/user-manual/assets/)
 
-## 🎯 Collision & Physics
+### 🎯 Collision & Physics
 * Full integration with 3D rigid-body physics engine [ammo.js](https://github.com/kripken/ammo.js)
 
-## 🔊 Audio
+### 🔊 Audio
 * 3D Positional audio via Web Audio API
 
-## 📦 Resource Loading
+### 📦 Resource Loading
 * Simple and powerful resource loading
 * Streaming of individual assets
 * Asset Variants - loads compressed textures (DXT, PVR, ETC1, ETC2) based on platform support
 
-## 🧑‍🍳 Entity / Component System
+### 🧑‍🍳 Entity / Component System
 * Built-in components: model, sound, animation, camera, collision, light, rigidbody, script, particlesystem
 
-## 📟 Scripting system
+### 📟 Scripting system
 * Write game behaviors by attaching JavaScript to game entities
 * Live code hot-swap enables rapid iteration
 
-## 🎮 Input
+### 🎮 Input
 * Mouse, Keyboard, Touch, Gamepad, VR
 
 # How to build
@@ -203,7 +203,7 @@ Specific engine versions:
 * https://code.playcanvas.com/playcanvas-0.181.11.js
 * https://code.playcanvas.com/playcanvas-0.181.11.min.js
 
-## How to get models?
+### How to get models?
 
 To convert any models created using a 3D modelling package see [this page](https://developer.playcanvas.com/en/engine/) in the developer documentation.
 
@@ -244,7 +244,7 @@ You can develop TypeScript applications against the PlayCanvas engine. To genera
 
 This will output to build/output/playcanvas.d.ts
 
-#  💁 Getting Help
+# 💁 Getting Help
 
 [**Forums**](https://forum.playcanvas.com) - Use the forum to ask/answer questions about PlayCanvas.
 
@@ -254,11 +254,11 @@ Want to help us make the best 3D engine on the web? Great!
 Check out [CONTRIBUTING.md](https://github.com/playcanvas/engine/blob/master/.github/CONTRIBUTING.md) that will get you started.
 And look for ["good first PR"](https://github.com/playcanvas/engine/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+PR%22)  label in Issues.
 
-## Github Issues
+### Github Issues
 
 Please use [Github Issues](https://github.com/playcanvas/engine/issues) to report bugs or request features.
 
-## Reporting bugs
+### Reporting bugs
 
 Please follow these steps to report a bug
 
