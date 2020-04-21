@@ -8,7 +8,7 @@ PlayCanvas is an open-source game engine. It uses HTML5 and WebGL to run games a
 
 [![CircleCI](https://circleci.com/gh/circleci/circleci-docs.svg?style=svg)](https://circleci.com/gh/circleci/circleci-docs)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/playcanvas/engine)
-![GitHub repo size](https://img.shields.io/github/repo-size/playcanvas/engine)
+![npm](https://img.shields.io/npm/v/playcanvas)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/playcanvas/engine)
 
 ![GitHub issues](https://img.shields.io/github/issues/playcanvas/engine)
@@ -36,32 +36,18 @@ PlayCanvas is used by leading companies in video games, advertising and visualiz
 <img src="https://assets.website-files.com/58e247041eb2474a46dcf179/5d0b23a651a0cee160d4a59c_small-logo-withtext.svg" height="50"/>
 
 <img src="https://www.arm.com/-/media/global/logos/Arm-logo-black-pms432.svg?h=92&w=300&hash=BE156D441AF03AF80DCA836D4FF8B2B7A58A9023&hash=BE156D441AF03AF80DCA836D4FF8B2B7A58A9023&la=en&revision=dfb81f02-b74e-45f6-8523-6d2037b838f1" height="50"/>
-
 <img src="https://i.pinimg.com/originals/54/dc/48/54dc48e0667516d7cd33d400ef9d8e20.png" height="50"/>
-<img src="https://assets.website-files.com/58e247041eb2474a46dcf179/5d0b23a651a0cee160d4a59c_small-logo-withtext.svg" height="50"/>
-
 <img src="https://facebookbrand.com/wp-content/uploads/2019/04/f_logo_RGB-Hex-Blue_512.png?w=512&h=512" height="50"/>
-
 <img src="https://upload.wikimedia.org/wikipedia/en/thumb/3/32/Zynga_logo.jpg/250px-Zynga_logo.jpg" height="50"/>
-
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Miniclip.svg/1280px-Miniclip.svg.png" height="50"/>
-
 <img src="https://upload.wikimedia.org/wikipedia/en/thumb/3/3e/LeapFrog_Enterprises.svg/1200px-LeapFrog_Enterprises.svg.png" height="50"/>
-
 <img src="https://3u26hb1g25wn1xwo8g186fnd-wpengine.netdna-ssl.com/files/2019/06/mozilla-logo-bw-rgb-1024x293.png" height="50"/>
-
 <img src="https://www.freepnglogos.com/uploads/nickelodeon-schweiz-logo-png-14.png" height="50"/>
-
 <img src="https://nordeus.com/wp-content/uploads/2017/09/nordeus-positive-logo-2-rgb.png" height="50"/>
-
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/PikPok_logo.svg/1200px-PikPok_logo.svg.png" height="50"/>
-
 <img src="https://motorcycle-logos.com/wp-content/uploads/2017/05/Polaris-Logo-768x531.png" height="50"/>
-
 <img src="https://openconnectivity.org/wp-content/uploads/2015/09/samsung-logo-4.png" height="50"/>
-
 <img src="https://upload.wikimedia.org/wikipedia/en/5/51/Logo_of_Spry_Fox_Video_Game_Company.png" height="50"/>
-
 <img src="https://upload.wikimedia.org/wikipedia/en/thumb/1/18/ZeptoLab.svg/1200px-ZeptoLab.svg.png" height="50"/>
 
 # 🚀 Getting Started
