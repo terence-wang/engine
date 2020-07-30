@@ -137,6 +137,7 @@ export function makeArray(arr) {
 }
 
 // MATH
+import { Mat4 } from './math/mat4.js';
 import { math } from './math/math.js';
 import { Vec2 } from './math/vec2.js';
 import { Vec3 } from './math/vec3.js';
@@ -195,6 +196,7 @@ Object.defineProperty(Vec4.prototype, "data", {
 // SHAPE
 import { BoundingBox } from './shape/bounding-box.js';
 import { BoundingSphere } from './shape/bounding-sphere.js';
+import { Frustum } from './shape/frustum.js';
 import { Plane } from './shape/plane.js';
 
 export var shape = {
@@ -204,6 +206,18 @@ export var shape = {
 };
 
 BoundingSphere.prototype.intersectRay = BoundingSphere.prototype.intersectsRay;
+
+Frustum.prototype.update = function (projectionMatrix, viewMatrix) {
+    // #ifdef DEBUG
+    console.warn('DEPRECATED: pc.Frustum#update is deprecated. Use pc.Frustum#setFromMat4 instead.');
+    // #endif
+
+    var viewProj = new Mat4();
+
+    viewProj.mul2(projectionMatrix, viewMatrix);
+
+    this.setFromMat4(viewProj);
+};
 
 // GRAPHICS
 import {
