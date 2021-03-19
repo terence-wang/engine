@@ -1,7 +1,7 @@
 /**
  * @private
  * @function
- * @name pc.now
+ * @name now
  * @description Get current time in milliseconds. Use it to measure time difference. Reference time may differ on different platforms.
  * @returns {number} The time in milliseconds.
  */
@@ -12,49 +12,49 @@ var now = (typeof window !== 'undefined') && window.performance && window.perfor
 /**
  * @private
  * @class
- * @name pc.Timer
+ * @name Timer
  * @description Create a new Timer instance.
  * @classdesc A Timer counts milliseconds from when start() is called until when stop() is called.
  */
-function Timer() {
-    this._isRunning = false;
-    this._a = 0;
-    this._b = 0;
-}
+class Timer {
+    constructor() {
+        this._isRunning = false;
+        this._a = 0;
+        this._b = 0;
+    }
 
-Object.assign(Timer.prototype, {
     /**
      * @private
      * @function
-     * @name pc.Timer#start
+     * @name Timer#start
      * @description Start the timer.
      */
-    start: function () {
+    start() {
         this._isRunning = true;
         this._a = now();
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.Timer#stop
+     * @name Timer#stop
      * @description Stop the timer.
      */
-    stop: function () {
+    stop() {
         this._isRunning = false;
         this._b = now();
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.Timer#getMilliseconds
+     * @name Timer#getMilliseconds
      * @description Get the number of milliseconds that passed between start() and stop() being called.
      * @returns {number} The elapsed milliseconds.
      */
-    getMilliseconds: function () {
+    getMilliseconds() {
         return this._b - this._a;
     }
-});
+}
 
 export { now, Timer };

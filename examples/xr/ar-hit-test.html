@@ -41,7 +41,8 @@
             var app = new pc.Application(canvas, {
                 mouse: new pc.Mouse(canvas),
                 touch: new pc.TouchDevice(canvas),
-                keyboard: new pc.Keyboard(window)
+                keyboard: new pc.Keyboard(window),
+                graphicsDeviceOptions: { alpha: true }
             });
             app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
             app.setCanvasResolution(pc.RESOLUTION_AUTO);
@@ -81,8 +82,10 @@
             if (app.xr.supported) {
                 var activate = function () {
                     if (app.xr.isAvailable(pc.XRTYPE_AR)) {
-                        c.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, function (err) {
-                            if (err) message("WebXR Immersive AR failed to start: " + err.message);
+                        c.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
+                            callback: function (err) {
+                                if (err) message("WebXR Immersive AR failed to start: " + err.message);
+                            }
                         });
                     } else {
                         message("Immersive AR is not available");

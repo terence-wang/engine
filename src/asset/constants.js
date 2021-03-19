@@ -1,4 +1,4 @@
-export var ABSOLUTE_URL = new RegExp(
+export const ABSOLUTE_URL = new RegExp(
     '^' + // beginning of the url
     '\\s*' +  // ignore leading spaces (some browsers trim the url automatically, but we can't assume that)
     '(?:' +  // beginning of a non-captured regex group
@@ -23,98 +23,98 @@ export var ABSOLUTE_URL = new RegExp(
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_ANIMATION
+ * @name ASSET_ANIMATION
  * @description Asset type name for animation.
  */
-export var ASSET_ANIMATION = 'animation';
+export const ASSET_ANIMATION = 'animation';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_AUDIO
+ * @name ASSET_AUDIO
  * @description Asset type name for audio.
  */
-export var ASSET_AUDIO = 'audio';
+export const ASSET_AUDIO = 'audio';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_IMAGE
+ * @name ASSET_IMAGE
  * @description Asset type name for image.
  */
-export var ASSET_IMAGE = 'image';
+export const ASSET_IMAGE = 'image';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_JSON
+ * @name ASSET_JSON
  * @description Asset type name for json.
  */
-export var ASSET_JSON = 'json';
+export const ASSET_JSON = 'json';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_MODEL
+ * @name ASSET_MODEL
  * @description Asset type name for model.
  */
-export var ASSET_MODEL = 'model';
+export const ASSET_MODEL = 'model';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_MATERIAL
+ * @name ASSET_MATERIAL
  * @description Asset type name for material.
  */
-export var ASSET_MATERIAL = 'material';
+export const ASSET_MATERIAL = 'material';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_TEXT
+ * @name ASSET_TEXT
  * @description Asset type name for text.
  */
-export var ASSET_TEXT = 'text';
+export const ASSET_TEXT = 'text';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_TEXTURE
+ * @name ASSET_TEXTURE
  * @description Asset type name for texture.
  */
-export var ASSET_TEXTURE = 'texture';
+export const ASSET_TEXTURE = 'texture';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_CUBEMAP
+ * @name ASSET_CUBEMAP
  * @description Asset type name for cubemap.
  */
-export var ASSET_CUBEMAP = 'cubemap';
+export const ASSET_CUBEMAP = 'cubemap';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_SHADER
+ * @name ASSET_SHADER
  * @description Asset type name for shader.
  */
-export var ASSET_SHADER = 'shader';
+export const ASSET_SHADER = 'shader';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_CSS
+ * @name ASSET_CSS
  * @description Asset type name for CSS.
  */
-export var ASSET_CSS = 'css';
+export const ASSET_CSS = 'css';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_HTML
+ * @name ASSET_HTML
  * @description Asset type name for HTML.
  */
-export var ASSET_HTML = 'html';
+export const ASSET_HTML = 'html';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_SCRIPT
+ * @name ASSET_SCRIPT
  * @description Asset type name for script.
  */
-export var ASSET_SCRIPT = 'script';
+export const ASSET_SCRIPT = 'script';
 /**
  * @constant
  * @type {string}
- * @name pc.ASSET_CONTAINER
+ * @name ASSET_CONTAINER
  * @description Asset type name for a container.
  */
-export var ASSET_CONTAINER = 'container';
+export const ASSET_CONTAINER = 'container';

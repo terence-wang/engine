@@ -1,6 +1,6 @@
 /**
  * @class
- * @name pc.Shader
+ * @name Shader
  * @classdesc A shader is a program that is responsible for rendering graphical primitives on a device's
  * graphics processor. The shader is generated from a shader definition. This shader definition specifies
  * the code for processing vertices and fragments processed by the GPU. The language of the code is GLSL
@@ -8,10 +8,10 @@
  * the PlayCanvas engine should map vertex buffer elements onto the attributes specified in the vertex
  * shader code.
  * @description Creates a new shader object.
- * @param {pc.GraphicsDevice} graphicsDevice - The graphics device used to manage this shader.
+ * @param {GraphicsDevice} graphicsDevice - The graphics device used to manage this shader.
  * @param {object} definition - The shader definition from which to build the shader.
  * @param {object} definition.attributes - Object detailing the mapping of vertex shader attribute names
- * to semantics (pc.SEMANTIC_*). This enables the engine to match vertex buffer data as inputs to the
+ * to semantics SEMANTIC_*. This enables the engine to match vertex buffer data as inputs to the
  * shader.
  * @param {string} definition.vshader - Vertex shader source (GLSL code).
  * @param {string} definition.fshader - Fragment shader source (GLSL code).
@@ -42,29 +42,38 @@
  *
  * var shader = new pc.Shader(graphicsDevice, shaderDefinition);
  */
-function Shader(graphicsDevice, definition) {
-    this.device = graphicsDevice;
-    this.definition = definition;
+class Shader {
+    constructor(graphicsDevice, definition) {
+        this.device = graphicsDevice;
+        this.definition = definition;
 
-    this.attributes = [];
-    this.uniforms = [];
-    this.samplers = [];
+        this.init();
 
-    this.ready = false;
-    this.failed = false;
+        this.device.createShader(this);
+    }
 
-    this.device.createShader(this);
-}
+    init() {
+        this.attributes = [];
+        this.uniforms = [];
+        this.samplers = [];
 
-Object.assign(Shader.prototype, {
+        this.ready = false;
+        this.failed = false;
+    }
+
     /**
      * @function
-     * @name pc.Shader#destroy
+     * @name Shader#destroy
      * @description Frees resources associated with this shader.
      */
-    destroy: function () {
+    destroy() {
         this.device.destroyShader(this);
     }
-});
+
+    // called when context was lost, function releases all context related resources
+    loseContext() {
+        this.init();
+    }
+}
 
 export { Shader };

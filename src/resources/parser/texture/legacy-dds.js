@@ -8,30 +8,31 @@ import {
     PIXELFORMAT_R8_G8_B8, PIXELFORMAT_R8_G8_B8_A8,
     PIXELFORMAT_RGBA32F,
     TEXHINT_ASSET
-} from '../../../graphics/graphics.js';
+} from '../../../graphics/constants.js';
 import { Texture } from '../../../graphics/texture.js';
 
 /**
  * @class
- * @name pc.LegacyDdsParser
- * @implements {pc.TextureParser}
+ * @name LegacyDdsParser
+ * @implements {TextureParser}
  * @classdesc Legacy texture parser for dds files.
  */
-function LegacyDdsParser(registry, retryRequests) {
-    this.retryRequests = !!retryRequests;
-}
+class LegacyDdsParser {
+    constructor(registry) {
+        this.maxRetries = 0;
+    }
 
-Object.assign(LegacyDdsParser.prototype, {
-    load: function (url, callback, asset) {
+    load(url, callback, asset) {
         var options = {
             cache: true,
             responseType: "arraybuffer",
-            retry: this.retryRequests
+            retry: this.maxRetries > 0,
+            maxRetries: this.maxRetries
         };
         http.get(url.load, options, callback);
-    },
+    }
 
-    open: function (url, data, device) {
+    open(url, data, device) {
         var header = new Uint32Array(data, 0, 128 / 4);
 
         var width = header[4];
@@ -162,6 +163,6 @@ Object.assign(LegacyDdsParser.prototype, {
 
         return texture;
     }
-});
+}
 
 export { LegacyDdsParser };

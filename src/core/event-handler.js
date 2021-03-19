@@ -1,6 +1,6 @@
 /**
  * @class
- * @name pc.EventHandler
+ * @name EventHandler
  * @classdesc Abstract base class that implements functionality for event handling.
  * @description Create a new event handler.
  * @example
@@ -14,14 +14,17 @@
  * // fire event
  * obj.fire('hello', 'world');
  */
-function EventHandler() {
-    this._callbacks = { };
-    this._callbackActive = { };
-}
+class EventHandler {
+    constructor() {
+        this.initEventHandler();
+    }
 
-Object.assign(EventHandler.prototype, {
+    initEventHandler() {
+        this._callbacks = { };
+        this._callbackActive = { };
+    }
 
-    _addCallback: function (name, callback, scope, once) {
+    _addCallback(name, callback, scope, once = false) {
         if (!name || typeof name !== 'string' || !callback)
             return;
 
@@ -34,39 +37,39 @@ Object.assign(EventHandler.prototype, {
         this._callbacks[name].push({
             callback: callback,
             scope: scope || this,
-            once: once || false
+            once: once
         });
-    },
+    }
 
     /**
      * @function
-     * @name pc.EventHandler#on
+     * @name EventHandler#on
      * @description Attach an event handler to an event.
      * @param {string} name - Name of the event to bind the callback to.
-     * @param {pc.callbacks.HandleEvent} callback - Function that is called when event is fired. Note the callback is limited to 8 arguments.
+     * @param {callbacks.HandleEvent} callback - Function that is called when event is fired. Note the callback is limited to 8 arguments.
      * @param {object} [scope] - Object to use as 'this' when the event is fired, defaults to current this.
-     * @returns {pc.EventHandler} Self for chaining.
+     * @returns {EventHandler} Self for chaining.
      * @example
      * obj.on('test', function (a, b) {
      *     console.log(a + b);
      * });
      * obj.fire('test', 1, 2); // prints 3 to the console
      */
-    on: function (name, callback, scope) {
+    on(name, callback, scope) {
         this._addCallback(name, callback, scope, false);
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.EventHandler#off
+     * @name EventHandler#off
      * @description Detach an event handler from an event. If callback is not provided then all callbacks are unbound from the event,
      * if scope is not provided then all events with the callback will be unbound.
      * @param {string} [name] - Name of the event to unbind.
-     * @param {pc.callbacks.HandleEvent} [callback] - Function to be unbound.
+     * @param {callbacks.HandleEvent} [callback] - Function to be unbound.
      * @param {object} [scope] - Scope that was used as the this when the event is fired.
-     * @returns {pc.EventHandler} Self for chaining.
+     * @returns {EventHandler} Self for chaining.
      * @example
      * var handler = function () {
      * };
@@ -77,7 +80,7 @@ Object.assign(EventHandler.prototype, {
      * obj.off('test', handler); // Removes all handler functions, called 'test'
      * obj.off('test', handler, this); // Removes all hander functions, called 'test' with scope this
      */
-    off: function (name, callback, scope) {
+    off(name, callback, scope) {
         if (name) {
             if (this._callbackActive[name] && this._callbackActive[name] === this._callbacks[name])
                 this._callbackActive[name] = this._callbackActive[name].slice();
@@ -118,14 +121,14 @@ Object.assign(EventHandler.prototype, {
         }
 
         return this;
-    },
+    }
 
     // ESLint rule disabled here as documenting arg1, arg2...argN as [...] rest
     // arguments is preferable to documenting each one individually.
     /* eslint-disable valid-jsdoc */
     /**
      * @function
-     * @name pc.EventHandler#fire
+     * @name EventHandler#fire
      * @description Fire an event, all additional arguments are passed on to the event listener.
      * @param {object} name - Name of event to fire.
      * @param {*} [arg1] - First argument that is passed to the event handler.
@@ -136,12 +139,12 @@ Object.assign(EventHandler.prototype, {
      * @param {*} [arg6] - Sixth argument that is passed to the event handler.
      * @param {*} [arg7] - Seventh argument that is passed to the event handler.
      * @param {*} [arg8] - Eighth argument that is passed to the event handler.
-     * @returns {pc.EventHandler} Self for chaining.
+     * @returns {EventHandler} Self for chaining.
      * @example
      * obj.fire('test', 'This is the message');
      */
     /* eslint-enable valid-jsdoc */
-    fire: function (name, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+    fire(name, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
         if (!name || !this._callbacks[name])
             return this;
 
@@ -179,16 +182,16 @@ Object.assign(EventHandler.prototype, {
             this._callbackActive[name] = null;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.EventHandler#once
+     * @name EventHandler#once
      * @description Attach an event handler to an event. This handler will be removed after being fired once.
      * @param {string} name - Name of the event to bind the callback to.
-     * @param {pc.callbacks.HandleEvent} callback - Function that is called when event is fired. Note the callback is limited to 8 arguments.
+     * @param {callbacks.HandleEvent} callback - Function that is called when event is fired. Note the callback is limited to 8 arguments.
      * @param {object} [scope] - Object to use as 'this' when the event is fired, defaults to current this.
-     * @returns {pc.EventHandler} Self for chaining.
+     * @returns {EventHandler} Self for chaining.
      * @example
      * obj.once('test', function (a, b) {
      *     console.log(a + b);
@@ -196,14 +199,14 @@ Object.assign(EventHandler.prototype, {
      * obj.fire('test', 1, 2); // prints 3 to the console
      * obj.fire('test', 1, 2); // not going to get handled
      */
-    once: function (name, callback, scope) {
+    once(name, callback, scope) {
         this._addCallback(name, callback, scope, true);
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.EventHandler#hasEvent
+     * @name EventHandler#hasEvent
      * @description Test if there are any handlers bound to an event name.
      * @param {string} name - The name of the event to test.
      * @returns {boolean} True if the object has handlers bound to the specified event name.
@@ -212,9 +215,9 @@ Object.assign(EventHandler.prototype, {
      * obj.hasEvent('test'); // returns true
      * obj.hasEvent('hello'); // returns false
      */
-    hasEvent: function (name) {
+    hasEvent(name) {
         return (this._callbacks[name] && this._callbacks[name].length !== 0) || false;
     }
-});
+}
 
 export { EventHandler };

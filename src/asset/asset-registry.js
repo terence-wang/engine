@@ -1,6 +1,6 @@
 import { path } from '../core/path.js';
 import { EventHandler } from '../core/event-handler.js';
-import { TagsCache } from '../core/tags.js';
+import { TagsCache } from '../core/tags-cache.js';
 
 import { standardMaterialTextureParameters } from '../scene/materials/standard-material-parameters.js';
 
@@ -10,167 +10,165 @@ import { Asset } from './asset.js';
 
 /**
  * @class
- * @name pc.AssetRegistry
- * @augments pc.EventHandler
+ * @name AssetRegistry
+ * @augments EventHandler
  * @classdesc Container for all assets that are available to this application.
  * @description Create an instance of an AssetRegistry.
  * Note: PlayCanvas scripts are provided with an AssetRegistry instance as 'app.assets'.
- * @param {pc.ResourceLoader} loader - The ResourceLoader used to load the asset files.
+ * @param {ResourceLoader} loader - The ResourceLoader used to load the asset files.
  * @property {string} prefix A URL prefix that will be added to all asset loading requests.
  */
-function AssetRegistry(loader) {
-    EventHandler.call(this);
+class AssetRegistry extends EventHandler {
+    constructor(loader) {
+        super();
 
-    this._loader = loader;
+        this._loader = loader;
 
-    this._assets = []; // list of all assets
-    this._cache = {}; // index for looking up assets by id
-    this._names = {}; // index for looking up assets by name
-    this._tags = new TagsCache('_id'); // index for looking up by tags
-    this._urls = {}; // index for looking up assets by url
+        this._assets = []; // list of all assets
+        this._cache = {}; // index for looking up assets by id
+        this._names = {}; // index for looking up assets by name
+        this._tags = new TagsCache('_id'); // index for looking up by tags
+        this._urls = {}; // index for looking up assets by url
 
-    this.prefix = null;
-}
-AssetRegistry.prototype = Object.create(EventHandler.prototype);
-AssetRegistry.prototype.constructor = AssetRegistry;
+        this.prefix = null;
+    }
 
-/**
- * @event
- * @name pc.AssetRegistry#load
- * @description Fired when an asset completes loading.
- * @param {pc.Asset} asset - The asset that has just loaded.
- * @example
- * app.assets.on("load", function (asset) {
- *     console.log("asset loaded: " + asset.name);
- * });
- */
+    /**
+     * @event
+     * @name AssetRegistry#load
+     * @description Fired when an asset completes loading.
+     * @param {Asset} asset - The asset that has just loaded.
+     * @example
+     * app.assets.on("load", function (asset) {
+     *     console.log("asset loaded: " + asset.name);
+     * });
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#load:[id]
- * @description Fired when an asset completes loading.
- * @param {pc.Asset} asset - The asset that has just loaded.
- * @example
- * var id = 123456;
- * var asset = app.assets.get(id);
- * app.assets.on("load:" + id, function (asset) {
- *     console.log("asset loaded: " + asset.name);
- * });
- * app.assets.load(asset);
- */
+    /**
+     * @event
+     * @name AssetRegistry#load:[id]
+     * @description Fired when an asset completes loading.
+     * @param {Asset} asset - The asset that has just loaded.
+     * @example
+     * var id = 123456;
+     * var asset = app.assets.get(id);
+     * app.assets.on("load:" + id, function (asset) {
+     *     console.log("asset loaded: " + asset.name);
+     * });
+     * app.assets.load(asset);
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#load:url:[url]
- * @description Fired when an asset completes loading.
- * @param {pc.Asset} asset - The asset that has just loaded.
- * @example
- * var id = 123456;
- * var asset = app.assets.get(id);
- * app.assets.on("load:url:" + asset.file.url, function (asset) {
- *     console.log("asset loaded: " + asset.name);
- * });
- * app.assets.load(asset);
- */
+    /**
+     * @event
+     * @name AssetRegistry#load:url:[url]
+     * @description Fired when an asset completes loading.
+     * @param {Asset} asset - The asset that has just loaded.
+     * @example
+     * var id = 123456;
+     * var asset = app.assets.get(id);
+     * app.assets.on("load:url:" + asset.file.url, function (asset) {
+     *     console.log("asset loaded: " + asset.name);
+     * });
+     * app.assets.load(asset);
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#add
- * @description Fired when an asset is added to the registry.
- * @param {pc.Asset} asset - The asset that was added.
- * @example
- * app.assets.on("add", function (asset) {
- *     console.log("New asset added: " + asset.name);
- * });
- */
+    /**
+     * @event
+     * @name AssetRegistry#add
+     * @description Fired when an asset is added to the registry.
+     * @param {Asset} asset - The asset that was added.
+     * @example
+     * app.assets.on("add", function (asset) {
+     *     console.log("New asset added: " + asset.name);
+     * });
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#add:[id]
- * @description Fired when an asset is added to the registry.
- * @param {pc.Asset} asset - The asset that was added.
- * @example
- * var id = 123456;
- * app.assets.on("add:" + id, function (asset) {
- *     console.log("Asset 123456 loaded");
- * });
- */
+    /**
+     * @event
+     * @name AssetRegistry#add:[id]
+     * @description Fired when an asset is added to the registry.
+     * @param {Asset} asset - The asset that was added.
+     * @example
+     * var id = 123456;
+     * app.assets.on("add:" + id, function (asset) {
+     *     console.log("Asset 123456 loaded");
+     * });
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#add:url:[url]
- * @description Fired when an asset is added to the registry.
- * @param {pc.Asset} asset - The asset that was added.
- */
+    /**
+     * @event
+     * @name AssetRegistry#add:url:[url]
+     * @description Fired when an asset is added to the registry.
+     * @param {Asset} asset - The asset that was added.
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#remove
- * @description Fired when an asset is removed from the registry.
- * @param {pc.Asset} asset - The asset that was removed.
- * @example
- * app.assets.on("remove", function (aseet) {
- *     console.log("Asset removed: " + asset.name);
- * });
- */
+    /**
+     * @event
+     * @name AssetRegistry#remove
+     * @description Fired when an asset is removed from the registry.
+     * @param {Asset} asset - The asset that was removed.
+     * @example
+     * app.assets.on("remove", function (aseet) {
+     *     console.log("Asset removed: " + asset.name);
+     * });
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#remove:[id]
- * @description Fired when an asset is removed from the registry.
- * @param {pc.Asset} asset - The asset that was removed.
- * @example
- * var id = 123456;
- * app.assets.on("remove:" + id, function (asset) {
- *     console.log("Asset removed: " + asset.name);
- * });
- */
+    /**
+     * @event
+     * @name AssetRegistry#remove:[id]
+     * @description Fired when an asset is removed from the registry.
+     * @param {Asset} asset - The asset that was removed.
+     * @example
+     * var id = 123456;
+     * app.assets.on("remove:" + id, function (asset) {
+     *     console.log("Asset removed: " + asset.name);
+     * });
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#remove:url:[url]
- * @description Fired when an asset is removed from the registry.
- * @param {pc.Asset} asset - The asset that was removed.
- */
+    /**
+     * @event
+     * @name AssetRegistry#remove:url:[url]
+     * @description Fired when an asset is removed from the registry.
+     * @param {Asset} asset - The asset that was removed.
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#error
- * @description Fired when an error occurs during asset loading.
- * @param {string} err - The error message.
- * @param {pc.Asset} asset - The asset that generated the error.
- * @example
- * var id = 123456;
- * var asset = app.assets.get(id);
- * app.assets.on("error", function (err, asset) {
- *     console.error(err);
- * });
- * app.assets.load(asset);
- */
+    /**
+     * @event
+     * @name AssetRegistry#error
+     * @description Fired when an error occurs during asset loading.
+     * @param {string} err - The error message.
+     * @param {Asset} asset - The asset that generated the error.
+     * @example
+     * var id = 123456;
+     * var asset = app.assets.get(id);
+     * app.assets.on("error", function (err, asset) {
+     *     console.error(err);
+     * });
+     * app.assets.load(asset);
+     */
 
-/**
- * @event
- * @name pc.AssetRegistry#error:[id]
- * @description Fired when an error occurs during asset loading.
- * @param {pc.Asset} asset - The asset that generated the error.
- * @example
- * var id = 123456;
- * var asset = app.assets.get(id);
- * app.assets.on("error:" + id, function (err, asset) {
- *     console.error(err);
- * });
- * app.assets.load(asset);
- */
+    /**
+     * @event
+     * @name AssetRegistry#error:[id]
+     * @description Fired when an error occurs during asset loading.
+     * @param {Asset} asset - The asset that generated the error.
+     * @example
+     * var id = 123456;
+     * var asset = app.assets.get(id);
+     * app.assets.on("error:" + id, function (err, asset) {
+     *     console.error(err);
+     * });
+     * app.assets.load(asset);
+     */
 
-Object.assign(AssetRegistry.prototype, {
     /**
      * @function
-     * @name pc.AssetRegistry#list
+     * @name AssetRegistry#list
      * @description Create a filtered list of assets from the registry.
      * @param {object} filters - Properties to filter on, currently supports: 'preload: true|false'.
-     * @returns {pc.Asset[]} The filtered list of assets.
+     * @returns {Asset[]} The filtered list of assets.
      */
-    list: function (filters) {
+    list(filters) {
         filters = filters || {};
         return this._assets.filter(function (asset) {
             var include = true;
@@ -179,20 +177,20 @@ Object.assign(AssetRegistry.prototype, {
             }
             return include;
         });
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#add
+     * @name AssetRegistry#add
      * @description Add an asset to the registry.
-     * @param {pc.Asset} asset - The asset to add.
+     * @param {Asset} asset - The asset to add.
      * @example
      * var asset = new pc.Asset("My Asset", "texture", {
      *     url: "../path/to/image.jpg"
      * });
      * app.assets.add(asset);
      */
-    add: function (asset) {
+    add(asset) {
         var index = this._assets.push(asset) - 1;
         var url;
 
@@ -221,19 +219,19 @@ Object.assign(AssetRegistry.prototype, {
 
         if (asset.preload)
             this.load(asset);
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#remove
+     * @name AssetRegistry#remove
      * @description Remove an asset from the registry.
-     * @param {pc.Asset} asset - The asset to remove.
+     * @param {Asset} asset - The asset to remove.
      * @returns {boolean} True if the asset was successfully removed and false otherwise.
      * @example
      * var asset = app.assets.get(100);
      * app.assets.remove(asset);
      */
-    remove: function (asset) {
+    remove(asset) {
         var idx = this._cache[asset.id];
         var url = asset.file ? asset.file.url : null;
 
@@ -281,41 +279,41 @@ Object.assign(AssetRegistry.prototype, {
 
         // asset not in registry
         return false;
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#get
+     * @name AssetRegistry#get
      * @description Retrieve an asset from the registry by its id field.
      * @param {number} id - The id of the asset to get.
-     * @returns {pc.Asset} The asset.
+     * @returns {Asset} The asset.
      * @example
      * var asset = app.assets.get(100);
      */
-    get: function (id) {
+    get(id) {
         var idx = this._cache[id];
         return this._assets[idx];
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#getByUrl
+     * @name AssetRegistry#getByUrl
      * @description Retrieve an asset from the registry by it's file's URL field.
      * @param {string} url - The url of the asset to get.
-     * @returns {pc.Asset} The asset.
+     * @returns {Asset} The asset.
      * @example
      * var asset = app.assets.getByUrl("../path/to/image.jpg");
      */
-    getByUrl: function (url) {
+    getByUrl(url) {
         var idx = this._urls[url];
         return this._assets[idx];
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#load
+     * @name AssetRegistry#load
      * @description Load the asset's file from a remote source. Listen for "load" events on the asset to find out when it is loaded.
-     * @param {pc.Asset} asset - The asset to load.
+     * @param {Asset} asset - The asset to load.
      * @example
      * // load some assets
      * var assetsToLoad = [
@@ -333,7 +331,7 @@ Object.assign(AssetRegistry.prototype, {
      *     app.assets.load(assetToLoad);
      * });
      */
-    load: function (asset) {
+    load(asset) {
         // do nothing if asset is already loaded
         // note: lots of code calls assets.load() assuming this check is present
         // don't remove it without updating calls to assets.load() with checks for the asset.loaded state
@@ -398,41 +396,41 @@ Object.assign(AssetRegistry.prototype, {
             asset.loaded = true;
             _opened(resource);
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#loadFromUrl
+     * @name AssetRegistry#loadFromUrl
      * @description Use this to load and create an asset if you don't have assets created. Usually you would only use this
      * if you are not integrated with the PlayCanvas Editor.
      * @param {string} url - The url to load.
      * @param {string} type - The type of asset to load.
-     * @param {pc.callbacks.LoadAsset} callback - Function called when asset is loaded, passed (err, asset), where err is null if no errors were encountered.
+     * @param {callbacks.LoadAsset} callback - Function called when asset is loaded, passed (err, asset), where err is null if no errors were encountered.
      * @example
      * app.assets.loadFromUrl("../path/to/texture.jpg", "texture", function (err, asset) {
      *     var texture = asset.resource;
      * });
      */
-    loadFromUrl: function (url, type, callback) {
+    loadFromUrl(url, type, callback) {
         this.loadFromUrlAndFilename(url, null, type, callback);
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#loadFromUrlAndFilename
+     * @name AssetRegistry#loadFromUrlAndFilename
      * @description Use this to load and create an asset when both the URL and filename are required. For example, use this function when loading
      * BLOB assets, where the URL does not adequately identify the file.
      * @param {string} url - The url to load.
      * @param {string} filename - The filename of the asset to load.
      * @param {string} type - The type of asset to load.
-     * @param {pc.callbacks.LoadAsset} callback - Function called when asset is loaded, passed (err, asset), where err is null if no errors were encountered.
+     * @param {callbacks.LoadAsset} callback - Function called when asset is loaded, passed (err, asset), where err is null if no errors were encountered.
      * @example
      * var file = magicallyAttainAFile();
      * app.assets.loadFromUrlAndFilename(URL.createObjectURL(file), "texture.png", "texture", function (err, asset) {
      *     var texture = asset.resource;
      * });
      */
-    loadFromUrlAndFilename: function (url, filename, type, callback) {
+    loadFromUrlAndFilename(url, filename, type, callback) {
         var self = this;
 
         var name = path.getBasename(filename || url);
@@ -446,14 +444,28 @@ Object.assign(AssetRegistry.prototype, {
         if (!asset) {
             asset = new Asset(name, type, file);
             self.add(asset);
+        } else if (asset.loaded) {
+            // asset is already loaded
+            callback(asset.loadFromUrlError || null, asset);
+            return;
         }
 
         var startLoad = function (asset) {
             asset.once("load", function (loadedAsset) {
-                callback(null, loadedAsset);
+                if (type === 'material') {
+                    self._loadTextures(loadedAsset, function (err, textures) {
+                        callback(err, loadedAsset);
+                    });
+                } else {
+                    callback(null, loadedAsset);
+                }
             });
             asset.once("error", function (err) {
-                callback(err);
+                // store the error on the asset in case user requests this asset again
+                if (err) {
+                    this.loadFromUrlError = err;
+                }
+                callback(err, asset);
             });
             self.load(asset);
         };
@@ -465,10 +477,10 @@ Object.assign(AssetRegistry.prototype, {
         } else {
             startLoad(asset);
         }
-    },
+    }
 
     // private method used for engine-only loading of model data
-    _loadModel: function (modelAsset, continuation) {
+    _loadModel(modelAsset, continuation) {
         var self = this;
 
         var url = modelAsset.getFileUrl();
@@ -495,10 +507,10 @@ Object.assign(AssetRegistry.prototype, {
             // other model format (e.g. obj)
             continuation(modelAsset);
         }
-    },
+    }
 
     // private method used for engine-only loading of model materials
-    _loadMaterials: function (modelAsset, mapping, callback) {
+    _loadMaterials(modelAsset, mapping, callback) {
         var self = this;
         var materials = [];
         var count = 0;
@@ -524,11 +536,11 @@ Object.assign(AssetRegistry.prototype, {
         if (count === 0) {
             callback(null, materials);
         }
-    },
+    }
 
     // private method used for engine-only loading of the textures referenced by
     // the material asset
-    _loadTextures: function (materialAsset, callback) {
+    _loadTextures(materialAsset, callback) {
         var self = this;
         var textures = [];
         var count = 0;
@@ -562,20 +574,20 @@ Object.assign(AssetRegistry.prototype, {
         if (count === 0) {
             callback(null, textures);
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#findAll
+     * @name AssetRegistry#findAll
      * @description Return all Assets with the specified name and type found in the registry.
      * @param {string} name - The name of the Assets to find.
      * @param {string} [type] - The type of the Assets to find.
-     * @returns {pc.Asset[]} A list of all Assets found.
+     * @returns {Asset[]} A list of all Assets found.
      * @example
      * var assets = app.assets.findAll("myTextureAsset", "texture");
      * console.log("Found " + assets.length + " assets called " + name);
      */
-    findAll: function (name, type) {
+    findAll(name, type) {
         var self = this;
         var idxs = this._names[name];
         if (idxs) {
@@ -593,25 +605,25 @@ Object.assign(AssetRegistry.prototype, {
         }
 
         return [];
-    },
+    }
 
-    _onTagAdd: function (tag, asset) {
+    _onTagAdd(tag, asset) {
         this._tags.add(tag, asset);
-    },
+    }
 
-    _onTagRemove: function (tag, asset) {
+    _onTagRemove(tag, asset) {
         this._tags.remove(tag, asset);
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#findByTag
+     * @name AssetRegistry#findByTag
      * @description Return all Assets that satisfy the search query.
      * Query can be simply a string, or comma separated strings,
      * to have inclusive results of assets that match at least one query.
      * A query that consists of an array of tags can be used to match assets that have each tag of array.
      * @param {...*} query - Name of a tag or array of tags.
-     * @returns {pc.Asset[]} A list of all Assets matched query.
+     * @returns {Asset[]} A list of all Assets matched query.
      * @example
      * var assets = app.assets.findByTag("level-1");
      * // returns all assets that tagged by `level-1`
@@ -625,45 +637,47 @@ Object.assign(AssetRegistry.prototype, {
      * var assets = app.assets.findByTag(["level-1", "monster"], ["level-2", "monster"]);
      * // returns all assets that tagged by (`level-1` AND `monster`) OR (`level-2` AND `monster`)
      */
-    findByTag: function () {
+    findByTag() {
         return this._tags.find(arguments);
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#filter
+     * @name AssetRegistry#filter
      * @description Return all Assets that satisfy filter callback.
-     * @param {pc.callbacks.FilterAsset} callback - The callback function that is used to filter assets, return `true` to include asset to result list.
-     * @returns {pc.Asset[]} A list of all Assets found.
+     * @param {callbacks.FilterAsset} callback - The callback function that is used to filter assets, return `true` to include asset to result list.
+     * @returns {Asset[]} A list of all Assets found.
      * @example
      * var assets = app.assets.filter(function (asset) {
      *     return asset.name.indexOf('monster') !== -1;
      * });
      * console.log("Found " + assets.length + " assets, where names contains 'monster'");
      */
-    filter: function (callback) {
+    filter(callback) {
         var items = [];
         for (var i = 0, len = this._assets.length; i < len; i++) {
             if (callback(this._assets[i]))
                 items.push(this._assets[i]);
         }
         return items;
-    },
+    }
 
     /**
      * @function
-     * @name pc.AssetRegistry#find
+     * @name AssetRegistry#find
      * @description Return the first Asset with the specified name and type found in the registry.
      * @param {string} name - The name of the Asset to find.
      * @param {string} [type] - The type of the Asset to find.
-     * @returns {pc.Asset} A single Asset or null if no Asset is found.
+     * @returns {Asset} A single Asset or null if no Asset is found.
      * @example
      * var asset = app.assets.find("myTextureAsset", "texture");
      */
-    find: function (name, type) {
+    find(name, type) {
+        // findAll returns an empty array the if the asset cannot be found so `asset` is
+        // never null/undefined
         var asset = this.findAll(name, type);
-        return asset ? asset[0] : null;
+        return asset.length > 0 ? asset[0] : null;
     }
-});
+}
 
 export { AssetRegistry };

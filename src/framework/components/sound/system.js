@@ -6,44 +6,40 @@ import { ComponentSystem } from '../system.js';
 import { SoundComponent } from './component.js';
 import { SoundComponentData } from './data.js';
 
-var _schema = ['enabled'];
+const _schema = ['enabled'];
 
 /**
  * @class
- * @name pc.SoundComponentSystem
- * @augments pc.ComponentSystem
- * @classdesc Manages creation of {@link pc.SoundComponent}s.
+ * @name SoundComponentSystem
+ * @augments ComponentSystem
+ * @classdesc Manages creation of {@link SoundComponent}s.
  * @description Create a SoundComponentSystem.
- * @param {pc.Application} app - The Application.
- * @param {pc.SoundManager} manager - The sound manager.
+ * @param {Application} app - The Application.
+ * @param {SoundManager} manager - The sound manager.
  * @property {number} volume Sets / gets the volume for the entire Sound system. All sounds will have their volume
  * multiplied by this value. Valid between [0, 1].
  * @property {AudioContext} context Gets the AudioContext currently used by the sound manager. Requires Web Audio API support.
- * @property {pc.SoundManager} manager Gets / sets the sound manager.
+ * @property {SoundManager} manager Gets / sets the sound manager.
  */
-var SoundComponentSystem = function (app, manager) {
-    ComponentSystem.call(this, app);
+class SoundComponentSystem extends ComponentSystem  {
+    constructor(app, manager) {
+        super(app);
 
-    this.id = "sound";
+        this.id = "sound";
 
-    this.ComponentType = SoundComponent;
-    this.DataType = SoundComponentData;
+        this.ComponentType = SoundComponent;
+        this.DataType = SoundComponentData;
 
-    this.schema = _schema;
+        this.schema = _schema;
 
-    this.manager = manager;
+        this.manager = manager;
 
-    ComponentSystem.bind('update', this.onUpdate, this);
+        ComponentSystem.bind('update', this.onUpdate, this);
 
-    this.on('beforeremove', this.onBeforeRemove, this);
-};
-SoundComponentSystem.prototype = Object.create(ComponentSystem.prototype);
-SoundComponentSystem.prototype.constructor = SoundComponentSystem;
+        this.on('beforeremove', this.onBeforeRemove, this);
+    }
 
-Component._buildAccessors(SoundComponent.prototype, _schema);
-
-Object.assign(SoundComponentSystem.prototype, {
-    initializeComponentData: function (component, data, properties) {
+    initializeComponentData(component, data, properties) {
         properties = [
             'volume',
             'pitch',
@@ -61,10 +57,10 @@ Object.assign(SoundComponentSystem.prototype, {
             }
         }
 
-        ComponentSystem.prototype.initializeComponentData.call(this, component, data, ['enabled']);
-    },
+        super.initializeComponentData(component, data, ['enabled']);
+    }
 
-    cloneComponent: function (entity, clone) {
+    cloneComponent(entity, clone) {
         var srcComponent = entity.sound;
         var srcSlots = srcComponent.slots;
 
@@ -100,30 +96,33 @@ Object.assign(SoundComponentSystem.prototype, {
 
         // add component with new data
         return this.addComponent(clone, cloneData);
-    },
+    }
 
-    onUpdate: function (dt) {
+    onUpdate(dt) {
         var store = this.store;
 
         for (var id in store) {
             if (store.hasOwnProperty(id)) {
                 var item = store[id];
                 var entity = item.entity;
-                var componentData = item.data;
 
-                // Update slot position if this is a 3d sound
-                if (componentData.enabled && entity.enabled && componentData.positional) {
-                    var position = entity.getPosition();
-                    var slots = componentData.slots;
-                    for (var key in slots) {
-                        slots[key].updatePosition(position);
+                if (entity.enabled) {
+                    var component = entity.sound;
+
+                    // Update slot position if this is a 3d sound
+                    if (component.enabled && component.positional) {
+                        var position = entity.getPosition();
+                        var slots = component.slots;
+                        for (var key in slots) {
+                            slots[key].updatePosition(position);
+                        }
                     }
                 }
             }
         }
-    },
+    }
 
-    onBeforeRemove: function (entity, component) {
+    onBeforeRemove(entity, component) {
         var slots = component.slots;
         // stop non overlapping sounds
         for (var key in slots) {
@@ -134,19 +133,16 @@ Object.assign(SoundComponentSystem.prototype, {
 
         component.onRemove();
     }
-});
 
-Object.defineProperty(SoundComponentSystem.prototype, 'volume', {
-    get: function () {
+    get volume() {
         return this.manager.volume;
-    },
-    set: function (volume) {
+    }
+
+    set volume(volume) {
         this.manager.volume = volume;
     }
-});
 
-Object.defineProperty(SoundComponentSystem.prototype, 'context', {
-    get: function () {
+    get context() {
         if (!hasAudioContext()) {
             // #ifdef DEBUG
             console.warn('WARNING: Audio context is not supported on this browser');
@@ -156,6 +152,8 @@ Object.defineProperty(SoundComponentSystem.prototype, 'context', {
 
         return this.manager.context;
     }
-});
+}
+
+Component._buildAccessors(SoundComponent.prototype, _schema);
 
 export { SoundComponentSystem };

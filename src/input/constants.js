@@ -1,913 +1,913 @@
-export var ACTION_MOUSE = 'mouse';
-export var ACTION_KEYBOARD = 'keyboard';
-export var ACTION_GAMEPAD = 'gamepad';
+export const ACTION_MOUSE = 'mouse';
+export const ACTION_KEYBOARD = 'keyboard';
+export const ACTION_GAMEPAD = 'gamepad';
 
-export var AXIS_MOUSE_X = 'mousex';
-export var AXIS_MOUSE_Y = 'mousey';
-export var AXIS_PAD_L_X = 'padlx';
-export var AXIS_PAD_L_Y = 'padly';
-export var AXIS_PAD_R_X = 'padrx';
-export var AXIS_PAD_R_Y = 'padry';
-export var AXIS_KEY = 'key';
+export const AXIS_MOUSE_X = 'mousex';
+export const AXIS_MOUSE_Y = 'mousey';
+export const AXIS_PAD_L_X = 'padlx';
+export const AXIS_PAD_L_Y = 'padly';
+export const AXIS_PAD_R_X = 'padrx';
+export const AXIS_PAD_R_Y = 'padry';
+export const AXIS_KEY = 'key';
 
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_KEYDOWN
+ * @name EVENT_KEYDOWN
  * @description Name of event fired when a key is pressed.
  */
-export var EVENT_KEYDOWN = 'keydown';
+export const EVENT_KEYDOWN = 'keydown';
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_KEYUP
+ * @name EVENT_KEYUP
  * @description Name of event fired when a key is released.
  */
-export var EVENT_KEYUP = 'keyup';
+export const EVENT_KEYUP = 'keyup';
 
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_MOUSEDOWN
+ * @name EVENT_MOUSEDOWN
  * @description Name of event fired when a mouse button is pressed.
  */
-export var EVENT_MOUSEDOWN = "mousedown";
+export const EVENT_MOUSEDOWN = "mousedown";
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_MOUSEMOVE
+ * @name EVENT_MOUSEMOVE
  * @description Name of event fired when the mouse is moved.
  */
-export var EVENT_MOUSEMOVE = "mousemove";
+export const EVENT_MOUSEMOVE = "mousemove";
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_MOUSEUP
+ * @name EVENT_MOUSEUP
  * @description Name of event fired when a mouse button is released.
  */
-export var EVENT_MOUSEUP = "mouseup";
+export const EVENT_MOUSEUP = "mouseup";
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_MOUSEWHEEL
+ * @name EVENT_MOUSEWHEEL
  * @description Name of event fired when the mouse wheel is rotated.
  */
-export var EVENT_MOUSEWHEEL = "mousewheel";
+export const EVENT_MOUSEWHEEL = "mousewheel";
 
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_TOUCHSTART
+ * @name EVENT_TOUCHSTART
  * @description Name of event fired when a new touch occurs. For example, a finger is placed on the device.
  */
-export var EVENT_TOUCHSTART = 'touchstart';
+export const EVENT_TOUCHSTART = 'touchstart';
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_TOUCHEND
+ * @name EVENT_TOUCHEND
  * @description Name of event fired when touch ends. For example, a finger is lifted off the device.
  */
-export var EVENT_TOUCHEND = 'touchend';
+export const EVENT_TOUCHEND = 'touchend';
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_TOUCHMOVE
+ * @name EVENT_TOUCHMOVE
  * @description Name of event fired when a touch moves.
  */
-export var EVENT_TOUCHMOVE = 'touchmove';
+export const EVENT_TOUCHMOVE = 'touchmove';
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_TOUCHCANCEL
+ * @name EVENT_TOUCHCANCEL
  * @description Name of event fired when a touch point is interrupted in some way.
- * The exact reasons for cancelling a touch can vary from device to device.
+ * The exact reasons for canceling a touch can vary from device to device.
  * For example, a modal alert pops up during the interaction; the touch point leaves the document area,
  * or there are more touch points than the device supports, in which case the earliest touch point is canceled.
  */
-export var EVENT_TOUCHCANCEL = 'touchcancel';
+export const EVENT_TOUCHCANCEL = 'touchcancel';
 
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_SELECT
+ * @name EVENT_SELECT
  * @description Name of event fired when a new xr select occurs. For example, primary trigger was pressed.
  */
-export var EVENT_SELECT = 'select';
+export const EVENT_SELECT = 'select';
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_SELECTSTART
+ * @name EVENT_SELECTSTART
  * @description Name of event fired when a new xr select starts. For example, primary trigger is now pressed.
  */
-export var EVENT_SELECTSTART = 'selectstart';
+export const EVENT_SELECTSTART = 'selectstart';
 /**
  * @constant
  * @type {string}
- * @name pc.EVENT_SELECTEND
+ * @name EVENT_SELECTEND
  * @description Name of event fired when xr select ends. For example, a primary trigger is now released.
  */
-export var EVENT_SELECTEND = 'selectend';
+export const EVENT_SELECTEND = 'selectend';
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_BACKSPACE
+ * @name KEY_BACKSPACE
  */
-export var KEY_BACKSPACE = 8;
+export const KEY_BACKSPACE = 8;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_TAB
+ * @name KEY_TAB
  */
-export var KEY_TAB = 9;
+export const KEY_TAB = 9;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_RETURN
+ * @name KEY_RETURN
  */
-export var KEY_RETURN = 13;
+export const KEY_RETURN = 13;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_ENTER
+ * @name KEY_ENTER
  */
-export var KEY_ENTER = 13;
+export const KEY_ENTER = 13;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_SHIFT
+ * @name KEY_SHIFT
  */
-export var KEY_SHIFT = 16;
+export const KEY_SHIFT = 16;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_CONTROL
+ * @name KEY_CONTROL
  */
-export var KEY_CONTROL = 17;
+export const KEY_CONTROL = 17;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_ALT
+ * @name KEY_ALT
  */
-export var KEY_ALT = 18;
+export const KEY_ALT = 18;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_PAUSE
+ * @name KEY_PAUSE
  */
-export var KEY_PAUSE = 19;
+export const KEY_PAUSE = 19;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_CAPS_LOCK
+ * @name KEY_CAPS_LOCK
  */
-export var KEY_CAPS_LOCK = 20;
+export const KEY_CAPS_LOCK = 20;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_ESCAPE
+ * @name KEY_ESCAPE
  */
-export var KEY_ESCAPE = 27;
+export const KEY_ESCAPE = 27;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_SPACE
+ * @name KEY_SPACE
  */
-export var KEY_SPACE = 32;
+export const KEY_SPACE = 32;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_PAGE_UP
+ * @name KEY_PAGE_UP
  */
-export var KEY_PAGE_UP = 33;
+export const KEY_PAGE_UP = 33;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_PAGE_DOWN
+ * @name KEY_PAGE_DOWN
  */
-export var KEY_PAGE_DOWN = 34;
+export const KEY_PAGE_DOWN = 34;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_END
+ * @name KEY_END
  */
-export var KEY_END = 35;
+export const KEY_END = 35;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_HOME
+ * @name KEY_HOME
  */
-export var KEY_HOME = 36;
+export const KEY_HOME = 36;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_LEFT
+ * @name KEY_LEFT
  */
-export var KEY_LEFT = 37;
+export const KEY_LEFT = 37;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_UP
+ * @name KEY_UP
  */
-export var KEY_UP = 38;
+export const KEY_UP = 38;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_RIGHT
+ * @name KEY_RIGHT
  */
-export var KEY_RIGHT = 39;
+export const KEY_RIGHT = 39;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_DOWN
+ * @name KEY_DOWN
  */
-export var KEY_DOWN = 40;
+export const KEY_DOWN = 40;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_PRINT_SCREEN
+ * @name KEY_PRINT_SCREEN
  */
-export var KEY_PRINT_SCREEN = 44;
+export const KEY_PRINT_SCREEN = 44;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_INSERT
+ * @name KEY_INSERT
  */
-export var KEY_INSERT = 45;
+export const KEY_INSERT = 45;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_DELETE
+ * @name KEY_DELETE
  */
-export var KEY_DELETE = 46;
+export const KEY_DELETE = 46;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_0
+ * @name KEY_0
  */
-export var KEY_0 = 48;
+export const KEY_0 = 48;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_1
+ * @name KEY_1
  */
-export var KEY_1 = 49;
+export const KEY_1 = 49;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_2
+ * @name KEY_2
  */
-export var KEY_2 = 50;
+export const KEY_2 = 50;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_3
+ * @name KEY_3
  */
-export var KEY_3 = 51;
+export const KEY_3 = 51;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_4
+ * @name KEY_4
  */
-export var KEY_4 = 52;
+export const KEY_4 = 52;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_5
+ * @name KEY_5
  */
-export var KEY_5 = 53;
+export const KEY_5 = 53;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_6
+ * @name KEY_6
  */
-export var KEY_6 = 54;
+export const KEY_6 = 54;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_7
+ * @name KEY_7
  */
-export var KEY_7 = 55;
+export const KEY_7 = 55;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_8
+ * @name KEY_8
  */
-export var KEY_8 = 56;
+export const KEY_8 = 56;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_9
+ * @name KEY_9
  */
-export var KEY_9 = 57;
+export const KEY_9 = 57;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_SEMICOLON
+ * @name KEY_SEMICOLON
  */
-export var KEY_SEMICOLON = 59;
+export const KEY_SEMICOLON = 59;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_EQUAL
+ * @name KEY_EQUAL
  */
-export var KEY_EQUAL = 61;
+export const KEY_EQUAL = 61;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_A
+ * @name KEY_A
  */
-export var KEY_A = 65;
+export const KEY_A = 65;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_B
+ * @name KEY_B
  */
-export var KEY_B = 66;
+export const KEY_B = 66;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_C
+ * @name KEY_C
  */
-export var KEY_C = 67;
+export const KEY_C = 67;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_D
+ * @name KEY_D
  */
-export var KEY_D = 68;
+export const KEY_D = 68;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_E
+ * @name KEY_E
  */
-export var KEY_E = 69;
+export const KEY_E = 69;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F
+ * @name KEY_F
  */
-export var KEY_F = 70;
+export const KEY_F = 70;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_G
+ * @name KEY_G
  */
-export var KEY_G = 71;
+export const KEY_G = 71;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_H
+ * @name KEY_H
  */
-export var KEY_H = 72;
+export const KEY_H = 72;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_I
+ * @name KEY_I
  */
-export var KEY_I = 73;
+export const KEY_I = 73;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_J
+ * @name KEY_J
  */
-export var KEY_J = 74;
+export const KEY_J = 74;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_K
+ * @name KEY_K
  */
-export var KEY_K = 75;
+export const KEY_K = 75;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_L
+ * @name KEY_L
  */
-export var KEY_L = 76;
+export const KEY_L = 76;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_M
+ * @name KEY_M
  */
-export var KEY_M = 77;
+export const KEY_M = 77;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_N
+ * @name KEY_N
  */
-export var KEY_N = 78;
+export const KEY_N = 78;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_O
+ * @name KEY_O
  */
-export var KEY_O = 79;
+export const KEY_O = 79;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_P
+ * @name KEY_P
  */
-export var KEY_P = 80;
+export const KEY_P = 80;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_Q
+ * @name KEY_Q
  */
-export var KEY_Q = 81;
+export const KEY_Q = 81;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_R
+ * @name KEY_R
  */
-export var KEY_R = 82;
+export const KEY_R = 82;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_S
+ * @name KEY_S
  */
-export var KEY_S = 83;
+export const KEY_S = 83;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_T
+ * @name KEY_T
  */
-export var KEY_T = 84;
+export const KEY_T = 84;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_U
+ * @name KEY_U
  */
-export var KEY_U = 85;
+export const KEY_U = 85;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_V
+ * @name KEY_V
  */
-export var KEY_V = 86;
+export const KEY_V = 86;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_W
+ * @name KEY_W
  */
-export var KEY_W = 87;
+export const KEY_W = 87;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_X
+ * @name KEY_X
  */
-export var KEY_X = 88;
+export const KEY_X = 88;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_Y
+ * @name KEY_Y
  */
-export var KEY_Y = 89;
+export const KEY_Y = 89;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_Z
+ * @name KEY_Z
  */
-export var KEY_Z = 90;
+export const KEY_Z = 90;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_WINDOWS
+ * @name KEY_WINDOWS
  */
-export var KEY_WINDOWS = 91;
+export const KEY_WINDOWS = 91;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_CONTEXT_MENU
+ * @name KEY_CONTEXT_MENU
  */
-export var KEY_CONTEXT_MENU = 93;
+export const KEY_CONTEXT_MENU = 93;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_0
+ * @name KEY_NUMPAD_0
  */
-export var KEY_NUMPAD_0 = 96;
+export const KEY_NUMPAD_0 = 96;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_1
+ * @name KEY_NUMPAD_1
  */
-export var KEY_NUMPAD_1 = 97;
+export const KEY_NUMPAD_1 = 97;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_2
+ * @name KEY_NUMPAD_2
  */
-export var KEY_NUMPAD_2 = 98;
+export const KEY_NUMPAD_2 = 98;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_3
+ * @name KEY_NUMPAD_3
  */
-export var KEY_NUMPAD_3 = 99;
+export const KEY_NUMPAD_3 = 99;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_4
+ * @name KEY_NUMPAD_4
  */
-export var KEY_NUMPAD_4 = 100;
+export const KEY_NUMPAD_4 = 100;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_5
+ * @name KEY_NUMPAD_5
  */
-export var KEY_NUMPAD_5 = 101;
+export const KEY_NUMPAD_5 = 101;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_6
+ * @name KEY_NUMPAD_6
  */
-export var KEY_NUMPAD_6 = 102;
+export const KEY_NUMPAD_6 = 102;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_7
+ * @name KEY_NUMPAD_7
  */
-export var KEY_NUMPAD_7 = 103;
+export const KEY_NUMPAD_7 = 103;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_8
+ * @name KEY_NUMPAD_8
  */
-export var KEY_NUMPAD_8 = 104;
+export const KEY_NUMPAD_8 = 104;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_NUMPAD_9
+ * @name KEY_NUMPAD_9
  */
-export var KEY_NUMPAD_9 = 105;
+export const KEY_NUMPAD_9 = 105;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_MULTIPLY
+ * @name KEY_MULTIPLY
  */
-export var KEY_MULTIPLY = 106;
+export const KEY_MULTIPLY = 106;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_ADD
+ * @name KEY_ADD
  */
-export var KEY_ADD = 107;
+export const KEY_ADD = 107;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_SEPARATOR
+ * @name KEY_SEPARATOR
  */
-export var KEY_SEPARATOR = 108;
+export const KEY_SEPARATOR = 108;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_SUBTRACT
+ * @name KEY_SUBTRACT
  */
-export var KEY_SUBTRACT = 109;
+export const KEY_SUBTRACT = 109;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_DECIMAL
+ * @name KEY_DECIMAL
  */
-export var KEY_DECIMAL = 110;
+export const KEY_DECIMAL = 110;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_DIVIDE
+ * @name KEY_DIVIDE
  */
-export var KEY_DIVIDE = 111;
+export const KEY_DIVIDE = 111;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F1
+ * @name KEY_F1
  */
-export var KEY_F1 = 112;
+export const KEY_F1 = 112;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F2
+ * @name KEY_F2
  */
-export var KEY_F2 = 113;
+export const KEY_F2 = 113;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F3
+ * @name KEY_F3
  */
-export var KEY_F3 = 114;
+export const KEY_F3 = 114;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F4
+ * @name KEY_F4
  */
-export var KEY_F4 = 115;
+export const KEY_F4 = 115;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F5
+ * @name KEY_F5
  */
-export var KEY_F5 = 116;
+export const KEY_F5 = 116;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F6
+ * @name KEY_F6
  */
-export var KEY_F6 = 117;
+export const KEY_F6 = 117;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F7
+ * @name KEY_F7
  */
-export var KEY_F7 = 118;
+export const KEY_F7 = 118;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F8
+ * @name KEY_F8
  */
-export var KEY_F8 = 119;
+export const KEY_F8 = 119;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F9
+ * @name KEY_F9
  */
-export var KEY_F9 = 120;
+export const KEY_F9 = 120;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F10
+ * @name KEY_F10
  */
-export var KEY_F10 = 121;
+export const KEY_F10 = 121;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F11
+ * @name KEY_F11
  */
-export var KEY_F11 = 122;
+export const KEY_F11 = 122;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_F12
+ * @name KEY_F12
  */
-export var KEY_F12 = 123;
+export const KEY_F12 = 123;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_COMMA
+ * @name KEY_COMMA
  */
-export var KEY_COMMA = 188;
+export const KEY_COMMA = 188;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_PERIOD
+ * @name KEY_PERIOD
  */
-export var KEY_PERIOD = 190;
+export const KEY_PERIOD = 190;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_SLASH
+ * @name KEY_SLASH
  */
-export var KEY_SLASH = 191;
+export const KEY_SLASH = 191;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_OPEN_BRACKET
+ * @name KEY_OPEN_BRACKET
  */
-export var KEY_OPEN_BRACKET = 219;
+export const KEY_OPEN_BRACKET = 219;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_BACK_SLASH
+ * @name KEY_BACK_SLASH
  */
-export var KEY_BACK_SLASH = 220;
+export const KEY_BACK_SLASH = 220;
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_CLOSE_BRACKET
+ * @name KEY_CLOSE_BRACKET
  */
-export var KEY_CLOSE_BRACKET = 221;
+export const KEY_CLOSE_BRACKET = 221;
 
 /**
  * @constant
  * @type {number}
- * @name pc.KEY_META
+ * @name KEY_META
  */
-export var KEY_META = 224;
+export const KEY_META = 224;
 
 /**
  * @constant
  * @type {number}
- * @name pc.MOUSEBUTTON_NONE
+ * @name MOUSEBUTTON_NONE
  * @description No mouse buttons pressed.
  */
-export var MOUSEBUTTON_NONE = -1;
+export const MOUSEBUTTON_NONE = -1;
 /**
  * @constant
  * @type {number}
- * @name pc.MOUSEBUTTON_LEFT
+ * @name MOUSEBUTTON_LEFT
  * @description The left mouse button.
  */
-export var MOUSEBUTTON_LEFT = 0;
+export const MOUSEBUTTON_LEFT = 0;
 /**
  * @constant
  * @type {number}
- * @name pc.MOUSEBUTTON_MIDDLE
+ * @name MOUSEBUTTON_MIDDLE
  * @description The middle mouse button.
  */
-export var MOUSEBUTTON_MIDDLE = 1;
+export const MOUSEBUTTON_MIDDLE = 1;
 /**
  * @constant
  * @type {number}
- * @name pc.MOUSEBUTTON_RIGHT
+ * @name MOUSEBUTTON_RIGHT
  * @description The right mouse button.
  */
-export var MOUSEBUTTON_RIGHT = 2;
+export const MOUSEBUTTON_RIGHT = 2;
 
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_1
+ * @name PAD_1
  * @description Index for pad 1.
  */
-export var PAD_1 = 0;
+export const PAD_1 = 0;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_2
+ * @name PAD_2
  * @description Index for pad 2.
  */
-export var PAD_2 = 1;
+export const PAD_2 = 1;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_3
+ * @name PAD_3
  * @description Index for pad 3.
  */
-export var PAD_3 = 2;
+export const PAD_3 = 2;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_4
+ * @name PAD_4
  * @description Index for pad 4.
  */
-export var PAD_4 = 3;
+export const PAD_4 = 3;
 
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_FACE_1
+ * @name PAD_FACE_1
  * @description The first face button, from bottom going clockwise.
  */
-export var PAD_FACE_1 = 0;
+export const PAD_FACE_1 = 0;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_FACE_2
+ * @name PAD_FACE_2
  * @description The second face button, from bottom going clockwise.
  */
-export var PAD_FACE_2 = 1;
+export const PAD_FACE_2 = 1;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_FACE_3
+ * @name PAD_FACE_3
  * @description The third face button, from bottom going clockwise.
  */
-export var PAD_FACE_3 = 2;
+export const PAD_FACE_3 = 2;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_FACE_4
+ * @name PAD_FACE_4
  * @description The fourth face button, from bottom going clockwise.
  */
-export var PAD_FACE_4 = 3;
+export const PAD_FACE_4 = 3;
 
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_L_SHOULDER_1
+ * @name PAD_L_SHOULDER_1
  * @description The first shoulder button on the left.
  */
-export var PAD_L_SHOULDER_1 = 4;
+export const PAD_L_SHOULDER_1 = 4;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_R_SHOULDER_1
+ * @name PAD_R_SHOULDER_1
  * @description The first shoulder button on the right.
  */
-export var PAD_R_SHOULDER_1 = 5;
+export const PAD_R_SHOULDER_1 = 5;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_L_SHOULDER_2
+ * @name PAD_L_SHOULDER_2
  * @description The second shoulder button on the left.
  */
-export var PAD_L_SHOULDER_2 = 6;
+export const PAD_L_SHOULDER_2 = 6;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_R_SHOULDER_2
+ * @name PAD_R_SHOULDER_2
  * @description The second shoulder button on the right.
  */
-export var PAD_R_SHOULDER_2 = 7;
+export const PAD_R_SHOULDER_2 = 7;
 
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_SELECT
+ * @name PAD_SELECT
  * @description The select button.
  */
-export var PAD_SELECT = 8;
+export const PAD_SELECT = 8;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_START
+ * @name PAD_START
  * @description The start button.
  */
-export var PAD_START = 9;
+export const PAD_START = 9;
 
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_L_STICK_BUTTON
+ * @name PAD_L_STICK_BUTTON
  * @description The button when depressing the left analogue stick.
  */
-export var PAD_L_STICK_BUTTON = 10;
+export const PAD_L_STICK_BUTTON = 10;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_R_STICK_BUTTON
+ * @name PAD_R_STICK_BUTTON
  * @description The button when depressing the right analogue stick.
  */
-export var PAD_R_STICK_BUTTON = 11;
+export const PAD_R_STICK_BUTTON = 11;
 
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_UP
+ * @name PAD_UP
  * @description Direction pad up.
  */
-export var PAD_UP = 12;
+export const PAD_UP = 12;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_DOWN
+ * @name PAD_DOWN
  * @description Direction pad down.
  */
-export var PAD_DOWN = 13;
+export const PAD_DOWN = 13;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_LEFT
+ * @name PAD_LEFT
  * @description Direction pad left.
  */
-export var PAD_LEFT = 14;
+export const PAD_LEFT = 14;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_RIGHT
+ * @name PAD_RIGHT
  * @description Direction pad right.
  */
-export var PAD_RIGHT = 15;
+export const PAD_RIGHT = 15;
 
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_VENDOR
+ * @name PAD_VENDOR
  * @description Vendor specific button.
  */
-export var PAD_VENDOR = 16;
+export const PAD_VENDOR = 16;
 
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_L_STICK_X
+ * @name PAD_L_STICK_X
  * @description Horizontal axis on the left analogue stick.
  */
-export var PAD_L_STICK_X = 0;
+export const PAD_L_STICK_X = 0;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_L_STICK_Y
+ * @name PAD_L_STICK_Y
  * @description Vertical axis on the left analogue stick.
  */
-export var PAD_L_STICK_Y = 1;
+export const PAD_L_STICK_Y = 1;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_R_STICK_X
+ * @name PAD_R_STICK_X
  * @description Horizontal axis on the right analogue stick.
  */
-export var PAD_R_STICK_X = 2;
+export const PAD_R_STICK_X = 2;
 /**
  * @constant
  * @type {number}
- * @name pc.PAD_R_STICK_Y
+ * @name PAD_R_STICK_Y
  * @description Vertical axis on the right analogue stick.
  */
-export var PAD_R_STICK_Y = 3;
+export const PAD_R_STICK_Y = 3;

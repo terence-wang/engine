@@ -1,11 +1,11 @@
 import { http } from '../net/http.js';
 
-function CssHandler() {
-    this.retryRequests = false;
-}
+class CssHandler {
+    constructor() {
+        this.maxRetries = 0;
+    }
 
-Object.assign(CssHandler.prototype, {
-    load: function (url, callback) {
+    load(url, callback) {
         if (typeof url === 'string') {
             url = {
                 load: url,
@@ -14,7 +14,8 @@ Object.assign(CssHandler.prototype, {
         }
 
         http.get(url.load, {
-            retry: this.retryRequests
+            retry: this.maxRetries > 0,
+            maxRetries: this.maxRetries
         }, function (err, response) {
             if (!err) {
                 callback(null, response);
@@ -22,19 +23,19 @@ Object.assign(CssHandler.prototype, {
                 callback("Error loading css resource: " + url.original + " [" + err + "]");
             }
         });
-    },
-
-    open: function (url, data) {
-        return data;
-    },
-
-    patch: function (asset, assets) {
     }
-});
+
+    open(url, data) {
+        return data;
+    }
+
+    patch(asset, assets) {
+    }
+}
 
 /**
  * @function
- * @name pc.createStyle
+ * @name createStyle
  * @description Creates a &lt;style&gt; DOM element from a string that contains CSS.
  * @param {string} cssString - A string that contains valid CSS.
  * @example

@@ -3,12 +3,12 @@ import { Component } from '../component.js';
 /**
  * @component
  * @class
- * @name pc.LayoutChildComponent
- * @augments pc.Component
+ * @name LayoutChildComponent
+ * @augments Component
  * @description Create a new LayoutChildComponent.
- * @classdesc A LayoutChildComponent enables the Entity to control the sizing applied to it by its parent {@link pc.LayoutGroupComponent}.
- * @param {pc.LayoutChildComponentSystem} system - The ComponentSystem that created this Component.
- * @param {pc.Entity} entity - The Entity that this Component is attached to.
+ * @classdesc A LayoutChildComponent enables the Entity to control the sizing applied to it by its parent {@link LayoutGroupComponent}.
+ * @param {LayoutChildComponentSystem} system - The ComponentSystem that created this Component.
+ * @param {Entity} entity - The Entity that this Component is attached to.
  * @property {number} minWidth The minimum width the element should be rendered at.
  * @property {number} minHeight The minimum height the element should be rendered at.
  * @property {number} maxWidth The maximum width the element should be rendered at.
@@ -17,19 +17,19 @@ import { Component } from '../component.js';
  * @property {number} fitHeightProportion The amount of additional vertical space that the element should take up, if necessary to satisfy a Stretch/Shrink fitting calculation. This is specified as a proportion, taking into account the proportion values of other siblings.
  * @property {number} excludeFromLayout If set to true, the child will be excluded from all layout calculations.
  */
-function LayoutChildComponent(system, entity) {
-    Component.call(this, system, entity);
+class LayoutChildComponent extends Component {
+    constructor(system, entity) {
+        super(system, entity);
 
-    this._minWidth = 0;
-    this._minHeight = 0;
-    this._maxWidth = null;
-    this._maxHeight = null;
-    this._fitWidthProportion = 0;
-    this._fitHeightProportion = 0;
-    this._excludeFromLayout = false;
+        this._minWidth = 0;
+        this._minHeight = 0;
+        this._maxWidth = null;
+        this._maxHeight = null;
+        this._fitWidthProportion = 0;
+        this._fitHeightProportion = 0;
+        this._excludeFromLayout = false;
+    }
 }
-LayoutChildComponent.prototype = Object.create(Component.prototype);
-LayoutChildComponent.prototype.constructor = LayoutChildComponent;
 
 function defineResizeProperty(name) {
     var _name = '_' + name;

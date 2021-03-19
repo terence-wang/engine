@@ -1,7 +1,7 @@
 import { now } from '../../../core/time.js';
-import { Color } from '../../../core/color.js';
 
 import { math } from '../../../math/math.js';
+import { Color } from '../../../math/color.js';
 
 import { EntityReference } from '../../utils/entity-reference.js';
 
@@ -37,55 +37,53 @@ STATES_TO_SPRITE_FRAME_NAMES[VisualState.INACTIVE] = 'inactiveSpriteFrame';
 /**
  * @component
  * @class
- * @name pc.ButtonComponent
- * @augments pc.Component
+ * @name ButtonComponent
+ * @augments Component
  * @classdesc A ButtonComponent enables a group of entities to behave like a button, with different visual states for hover and press interactions.
  * @description Create a new ButtonComponent.
- * @param {pc.ButtonComponentSystem} system - The ComponentSystem that created this Component.
- * @param {pc.Entity} entity - The Entity that this Component is attached to.
+ * @param {ButtonComponentSystem} system - The ComponentSystem that created this Component.
+ * @param {Entity} entity - The Entity that this Component is attached to.
  * @property {boolean} active If set to false, the button will be visible but will not respond to hover or touch interactions.
- * @property {pc.Entity} imageEntity A reference to the entity to be used as the button background. The entity must have an ImageElement component.
- * @property {pc.Vec4} hitPadding Padding to be used in hit-test calculations. Can be used to expand the bounding box so that the button is easier to tap.
+ * @property {Entity} imageEntity A reference to the entity to be used as the button background. The entity must have an ImageElement component.
+ * @property {Vec4} hitPadding Padding to be used in hit-test calculations. Can be used to expand the bounding box so that the button is easier to tap.
  * @property {number} transitionMode Controls how the button responds when the user hovers over it/presses it.
- * @property {pc.Color} hoverTint Color to be used on the button image when the user hovers over it.
- * @property {pc.Color} pressedTint Color to be used on the button image when the user presses it.
- * @property {pc.Color} inactiveTint Color to be used on the button image when the button is not interactive.
+ * @property {Color} hoverTint Color to be used on the button image when the user hovers over it.
+ * @property {Color} pressedTint Color to be used on the button image when the user presses it.
+ * @property {Color} inactiveTint Color to be used on the button image when the button is not interactive.
  * @property {number} fadeDuration Duration to be used when fading between tints, in milliseconds.
- * @property {pc.Asset} hoverSpriteAsset Sprite to be used as the button image when the user hovers over it.
+ * @property {Asset} hoverSpriteAsset Sprite to be used as the button image when the user hovers over it.
  * @property {number} hoverSpriteFrame Frame to be used from the hover sprite.
- * @property {pc.Asset} pressedSpriteAsset Sprite to be used as the button image when the user presses it.
+ * @property {Asset} pressedSpriteAsset Sprite to be used as the button image when the user presses it.
  * @property {number} pressedSpriteFrame Frame to be used from the pressed sprite.
- * @property {pc.Asset} inactiveSpriteAsset Sprite to be used as the button image when the button is not interactive.
+ * @property {Asset} inactiveSpriteAsset Sprite to be used as the button image when the button is not interactive.
  * @property {number} inactiveSpriteFrame Frame to be used from the inactive sprite.
  */
-function ButtonComponent(system, entity) {
-    Component.call(this, system, entity);
+class ButtonComponent extends Component {
+    constructor(system, entity) {
+        super(system, entity);
 
-    this._visualState = VisualState.DEFAULT;
-    this._isHovering = false;
-    this._hoveringCounter = 0;
-    this._isPressed = false;
+        this._visualState = VisualState.DEFAULT;
+        this._isHovering = false;
+        this._hoveringCounter = 0;
+        this._isPressed = false;
 
-    this._defaultTint = new Color(1, 1, 1, 1);
-    this._defaultSpriteAsset = null;
-    this._defaultSpriteFrame = 0;
+        this._defaultTint = new Color(1, 1, 1, 1);
+        this._defaultSpriteAsset = null;
+        this._defaultSpriteFrame = 0;
 
-    this._imageReference = new EntityReference(this, 'imageEntity', {
-        'element#gain': this._onImageElementGain,
-        'element#lose': this._onImageElementLose,
-        'element#set:color': this._onSetColor,
-        'element#set:opacity': this._onSetOpacity,
-        'element#set:spriteAsset': this._onSetSpriteAsset,
-        'element#set:spriteFrame': this._onSetSpriteFrame
-    });
+        this._imageReference = new EntityReference(this, 'imageEntity', {
+            'element#gain': this._onImageElementGain,
+            'element#lose': this._onImageElementLose,
+            'element#set:color': this._onSetColor,
+            'element#set:opacity': this._onSetOpacity,
+            'element#set:spriteAsset': this._onSetSpriteAsset,
+            'element#set:spriteFrame': this._onSetSpriteFrame
+        });
 
-    this._toggleLifecycleListeners('on', system);
-}
-ButtonComponent.prototype = Object.create(Component.prototype);
-ButtonComponent.prototype.constructor = ButtonComponent;
+        this._toggleLifecycleListeners('on', system);
+    }
 
-Object.assign(ButtonComponent.prototype, {
-    _toggleLifecycleListeners: function (onOrOff, system) {
+    _toggleLifecycleListeners(onOrOff, system) {
         this[onOrOff]('set_active', this._onSetActive, this);
         this[onOrOff]('set_transitionMode', this._onSetTransitionMode, this);
         this[onOrOff]('set_hoverTint', this._onSetTransitionValue, this);
@@ -100,51 +98,51 @@ Object.assign(ButtonComponent.prototype, {
 
         system.app.systems.element[onOrOff]('add', this._onElementComponentAdd, this);
         system.app.systems.element[onOrOff]('beforeremove', this._onElementComponentRemove, this);
-    },
+    }
 
-    _onSetActive: function (name, oldValue, newValue) {
+    _onSetActive(name, oldValue, newValue) {
         if (oldValue !== newValue) {
             this._updateVisualState();
         }
-    },
+    }
 
-    _onSetTransitionMode: function (name, oldValue, newValue) {
+    _onSetTransitionMode(name, oldValue, newValue) {
         if (oldValue !== newValue) {
             this._cancelTween();
             this._resetToDefaultVisualState(oldValue);
             this._forceReapplyVisualState();
         }
-    },
+    }
 
-    _onSetTransitionValue: function (name, oldValue, newValue) {
+    _onSetTransitionValue(name, oldValue, newValue) {
         if (oldValue !== newValue) {
             this._forceReapplyVisualState();
         }
-    },
+    }
 
-    _onElementComponentRemove: function (entity) {
+    _onElementComponentRemove(entity) {
         if (this.entity === entity) {
             this._toggleHitElementListeners('off');
         }
-    },
+    }
 
-    _onElementComponentAdd: function (entity) {
+    _onElementComponentAdd(entity) {
         if (this.entity === entity) {
             this._toggleHitElementListeners('on');
         }
-    },
+    }
 
-    _onImageElementLose: function () {
+    _onImageElementLose() {
         this._cancelTween();
         this._resetToDefaultVisualState(this.transitionMode);
-    },
+    }
 
-    _onImageElementGain: function () {
+    _onImageElementGain() {
         this._storeDefaultVisualState();
         this._forceReapplyVisualState();
-    },
+    }
 
-    _toggleHitElementListeners: function (onOrOff) {
+    _toggleHitElementListeners(onOrOff) {
         if (this.entity.element) {
             var isAdding = (onOrOff === 'on');
 
@@ -169,101 +167,101 @@ Object.assign(ButtonComponent.prototype, {
 
             this._hasHitElementListeners = isAdding;
         }
-    },
+    }
 
-    _storeDefaultVisualState: function () {
+    _storeDefaultVisualState() {
         if (this._imageReference.hasComponent('element')) {
             this._storeDefaultColor(this._imageReference.entity.element.color);
             this._storeDefaultOpacity(this._imageReference.entity.element.opacity);
             this._storeDefaultSpriteAsset(this._imageReference.entity.element.spriteAsset);
             this._storeDefaultSpriteFrame(this._imageReference.entity.element.spriteFrame);
         }
-    },
+    }
 
-    _storeDefaultColor: function (color) {
+    _storeDefaultColor(color) {
         this._defaultTint.r = color.r;
         this._defaultTint.g = color.g;
         this._defaultTint.b = color.b;
-    },
+    }
 
-    _storeDefaultOpacity: function (opacity) {
+    _storeDefaultOpacity(opacity) {
         this._defaultTint.a = opacity;
-    },
+    }
 
-    _storeDefaultSpriteAsset: function (spriteAsset) {
+    _storeDefaultSpriteAsset(spriteAsset) {
         this._defaultSpriteAsset = spriteAsset;
-    },
+    }
 
-    _storeDefaultSpriteFrame: function (spriteFrame) {
+    _storeDefaultSpriteFrame(spriteFrame) {
         this._defaultSpriteFrame = spriteFrame;
-    },
+    }
 
-    _onSetColor: function (color) {
+    _onSetColor(color) {
         if (!this._isApplyingTint) {
             this._storeDefaultColor(color);
             this._forceReapplyVisualState();
         }
-    },
+    }
 
-    _onSetOpacity: function (opacity) {
+    _onSetOpacity(opacity) {
         if (!this._isApplyingTint) {
             this._storeDefaultOpacity(opacity);
             this._forceReapplyVisualState();
         }
-    },
+    }
 
-    _onSetSpriteAsset: function (spriteAsset) {
+    _onSetSpriteAsset(spriteAsset) {
         if (!this._isApplyingSprite) {
             this._storeDefaultSpriteAsset(spriteAsset);
             this._forceReapplyVisualState();
         }
-    },
+    }
 
-    _onSetSpriteFrame: function (spriteFrame) {
+    _onSetSpriteFrame(spriteFrame) {
         if (!this._isApplyingSprite) {
             this._storeDefaultSpriteFrame(spriteFrame);
             this._forceReapplyVisualState();
         }
-    },
+    }
 
-    _onMouseEnter: function (event) {
+    _onMouseEnter(event) {
         this._isHovering = true;
 
         this._updateVisualState();
         this._fireIfActive('mouseenter', event);
-    },
+    }
 
-    _onMouseLeave: function (event) {
+    _onMouseLeave(event) {
         this._isHovering = false;
         this._isPressed = false;
 
         this._updateVisualState();
         this._fireIfActive('mouseleave', event);
-    },
+    }
 
-    _onMouseDown: function (event) {
+    _onMouseDown(event) {
         this._isPressed = true;
 
         this._updateVisualState();
         this._fireIfActive('mousedown', event);
-    },
+    }
 
-    _onMouseUp: function (event) {
+    _onMouseUp(event) {
         this._isPressed = false;
 
         this._updateVisualState();
         this._fireIfActive('mouseup', event);
-    },
+    }
 
-    _onTouchStart: function (event) {
+    _onTouchStart(event) {
         this._isPressed = true;
 
         this._updateVisualState();
         this._fireIfActive('touchstart', event);
-    },
+    }
 
-    _onTouchEnd: function (event) {
-        // The default behaviour of the browser is to simulate a series of
+    _onTouchEnd(event) {
+        // The default behavior of the browser is to simulate a series of
         // `mouseenter/down/up` events immediately after the `touchend` event,
         // in order to ensure that websites that don't explicitly listen for
         // touch events will still work on mobile (see https://www.html5rocks.com/en/mobile/touchandmouse/
@@ -277,35 +275,35 @@ Object.assign(ButtonComponent.prototype, {
 
         this._updateVisualState();
         this._fireIfActive('touchend', event);
-    },
+    }
 
-    _onTouchLeave: function (event) {
+    _onTouchLeave(event) {
         this._isPressed = false;
 
         this._updateVisualState();
         this._fireIfActive('touchleave', event);
-    },
+    }
 
-    _onTouchCancel: function (event) {
+    _onTouchCancel(event) {
         this._isPressed = false;
 
         this._updateVisualState();
         this._fireIfActive('touchcancel', event);
-    },
+    }
 
-    _onSelectStart: function (event) {
+    _onSelectStart(event) {
         this._isPressed = true;
         this._updateVisualState();
         this._fireIfActive('selectstart', event);
-    },
+    }
 
-    _onSelectEnd: function (event) {
+    _onSelectEnd(event) {
         this._isPressed = false;
         this._updateVisualState();
         this._fireIfActive('selectend', event);
-    },
+    }
 
-    _onSelectEnter: function (event) {
+    _onSelectEnter(event) {
         this._hoveringCounter++;
 
         if (this._hoveringCounter === 1) {
@@ -314,9 +312,9 @@ Object.assign(ButtonComponent.prototype, {
         }
 
         this._fireIfActive('selectenter', event);
-    },
+    }
 
-    _onSelectLeave: function (event) {
+    _onSelectLeave(event) {
         this._hoveringCounter--;
 
         if (this._hoveringCounter === 0) {
@@ -326,19 +324,19 @@ Object.assign(ButtonComponent.prototype, {
         }
 
         this._fireIfActive('selectleave', event);
-    },
+    }
 
-    _onClick: function (event) {
+    _onClick(event) {
         this._fireIfActive('click', event);
-    },
+    }
 
-    _fireIfActive: function (name, event) {
+    _fireIfActive(name, event) {
         if (this.data.active) {
             this.fire(name, event);
         }
-    },
+    }
 
-    _updateVisualState: function (force) {
+    _updateVisualState(force) {
         var oldVisualState = this._visualState;
         var newVisualState = this._determineVisualState();
 
@@ -377,19 +375,19 @@ Object.assign(ButtonComponent.prototype, {
                     break;
             }
         }
-    },
+    }
 
     // Called when a property changes that mean the visual state must be reapplied,
     // even if the state enum has not changed. Examples of this are when the tint
     // value for one of the states is changed via the editor.
-    _forceReapplyVisualState: function () {
+    _forceReapplyVisualState() {
         this._updateVisualState(true);
-    },
+    }
 
     // Called before the image entity changes, in order to restore the previous
     // image back to its original tint. Note that this happens immediately, i.e.
     // without any animation.
-    _resetToDefaultVisualState: function (transitionMode) {
+    _resetToDefaultVisualState(transitionMode) {
         if (this._imageReference.hasComponent('element')) {
             switch (transitionMode) {
                 case BUTTON_TRANSITION_MODE_TINT:
@@ -402,9 +400,9 @@ Object.assign(ButtonComponent.prototype, {
                     break;
             }
         }
-    },
+    }
 
-    _determineVisualState: function () {
+    _determineVisualState() {
         if (!this.active) {
             return VisualState.INACTIVE;
         } else if (this._isPressed) {
@@ -414,9 +412,9 @@ Object.assign(ButtonComponent.prototype, {
         }
 
         return VisualState.DEFAULT;
-    },
+    }
 
-    _applySprite: function (spriteAsset, spriteFrame) {
+    _applySprite(spriteAsset, spriteFrame) {
         spriteFrame = spriteFrame || 0;
 
         if (this._imageReference.hasComponent('element')) {
@@ -425,9 +423,9 @@ Object.assign(ButtonComponent.prototype, {
             this._imageReference.entity.element.spriteFrame = spriteFrame;
             this._isApplyingSprite = false;
         }
-    },
+    }
 
-    _applyTint: function (tintColor) {
+    _applyTint(tintColor) {
         this._cancelTween();
 
         if (this.fadeDuration === 0) {
@@ -435,18 +433,18 @@ Object.assign(ButtonComponent.prototype, {
         } else {
             this._applyTintWithTween(tintColor);
         }
-    },
+    }
 
-    _applyTintImmediately: function (tintColor) {
+    _applyTintImmediately(tintColor) {
         if (this._imageReference.hasComponent('element') && tintColor) {
             this._isApplyingTint = true;
             this._imageReference.entity.element.color = toColor3(tintColor);
             this._imageReference.entity.element.opacity = tintColor.a;
             this._isApplyingTint = false;
         }
-    },
+    }
 
-    _applyTintWithTween: function (tintColor) {
+    _applyTintWithTween(tintColor) {
         if (this._imageReference.hasComponent('element') && tintColor) {
             var color = this._imageReference.entity.element.color;
             var opacity = this._imageReference.entity.element.opacity;
@@ -458,9 +456,9 @@ Object.assign(ButtonComponent.prototype, {
                 lerpColor: new Color()
             };
         }
-    },
+    }
 
-    _updateTintTween: function () {
+    _updateTintTween() {
         var elapsedTime = now() - this._tweenInfo.startTime;
         var elapsedProportion = this.fadeDuration === 0 ? 1 : (elapsedTime / this.fadeDuration);
         elapsedProportion = math.clamp(elapsedProportion, 0, 1);
@@ -473,19 +471,19 @@ Object.assign(ButtonComponent.prototype, {
             this._applyTintImmediately(this._tweenInfo.to);
             this._cancelTween();
         }
-    },
+    }
 
-    _cancelTween: function () {
+    _cancelTween() {
         delete this._tweenInfo;
-    },
+    }
 
-    onUpdate: function () {
+    onUpdate() {
         if (this._tweenInfo) {
             this._updateTintTween();
         }
-    },
+    }
 
-    onEnable: function () {
+    onEnable() {
         // Reset input state
         this._isHovering = false;
         this._hoveringCounter = 0;
@@ -494,18 +492,18 @@ Object.assign(ButtonComponent.prototype, {
         this._imageReference.onParentComponentEnable();
         this._toggleHitElementListeners('on');
         this._forceReapplyVisualState();
-    },
+    }
 
-    onDisable: function () {
+    onDisable() {
         this._toggleHitElementListeners('off');
         this._resetToDefaultVisualState(this.transitionMode);
-    },
+    }
 
-    onRemove: function () {
+    onRemove() {
         this._toggleLifecycleListeners('off', this.system);
         this.onDisable();
     }
-});
+}
 
 function toColor3(color4) {
     return new Color(color4.r, color4.g, color4.b);
@@ -513,116 +511,116 @@ function toColor3(color4) {
 
 /**
  * @event
- * @name pc.ButtonComponent#mousedown
+ * @name ButtonComponent#mousedown
  * @description Fired when the mouse is pressed while the cursor is on the component.
- * @param {pc.ElementMouseEvent} event - The event.
+ * @param {ElementMouseEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#mouseup
+ * @name ButtonComponent#mouseup
  * @description Fired when the mouse is released while the cursor is on the component.
- * @param {pc.ElementMouseEvent} event - The event.
+ * @param {ElementMouseEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#mouseenter
+ * @name ButtonComponent#mouseenter
  * @description Fired when the mouse cursor enters the component.
- * @param {pc.ElementMouseEvent} event - The event.
+ * @param {ElementMouseEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#mouseleave
+ * @name ButtonComponent#mouseleave
  * @description Fired when the mouse cursor leaves the component.
- * @param {pc.ElementMouseEvent} event - The event.
+ * @param {ElementMouseEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#click
+ * @name ButtonComponent#click
  * @description Fired when the mouse is pressed and released on the component or when a touch starts and ends on the component.
- * @param {pc.ElementMouseEvent|pc.ElementTouchEvent} event - The event.
+ * @param {ElementMouseEvent|ElementTouchEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#touchstart
+ * @name ButtonComponent#touchstart
  * @description Fired when a touch starts on the component.
- * @param {pc.ElementTouchEvent} event - The event.
+ * @param {ElementTouchEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#touchend
+ * @name ButtonComponent#touchend
  * @description Fired when a touch ends on the component.
- * @param {pc.ElementTouchEvent} event - The event.
+ * @param {ElementTouchEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#touchcancel
- * @description Fired when a touch is cancelled on the component.
- * @param {pc.ElementTouchEvent} event - The event.
+ * @name ButtonComponent#touchcancel
+ * @description Fired when a touch is canceled on the component.
+ * @param {ElementTouchEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#touchleave
+ * @name ButtonComponent#touchleave
  * @description Fired when a touch leaves the component.
- * @param {pc.ElementTouchEvent} event - The event.
+ * @param {ElementTouchEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#selectstart
+ * @name ButtonComponent#selectstart
  * @description Fired when a xr select starts on the component.
- * @param {pc.ElementSelectEvent} event - The event.
+ * @param {ElementSelectEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#selectend
+ * @name ButtonComponent#selectend
  * @description Fired when a xr select ends on the component.
- * @param {pc.ElementSelectEvent} event - The event.
+ * @param {ElementSelectEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#selectenter
+ * @name ButtonComponent#selectenter
  * @description Fired when a xr select now hovering over the component.
- * @param {pc.ElementSelectEvent} event - The event.
+ * @param {ElementSelectEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#selectleave
+ * @name ButtonComponent#selectleave
  * @description Fired when a xr select not hovering over the component.
- * @param {pc.ElementSelectEvent} event - The event.
+ * @param {ElementSelectEvent} event - The event.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#hoverstart
+ * @name ButtonComponent#hoverstart
  * @description Fired when the button changes state to be hovered.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#hoverend
+ * @name ButtonComponent#hoverend
  * @description Fired when the button changes state to be not hovered.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#pressedstart
+ * @name ButtonComponent#pressedstart
  * @description Fired when the button changes state to be pressed.
  */
 
 /**
  * @event
- * @name pc.ButtonComponent#pressedend
+ * @name ButtonComponent#pressedend
  * @description Fired when the button changes state to be not pressed.
  */
 

@@ -1,5 +1,7 @@
 import { now } from  '../core/time.js';
 
+import { math } from '../math/math.js';
+import { Color } from '../math/color.js';
 import { Mat3 } from '../math/mat3.js';
 import { Mat4 } from '../math/mat4.js';
 import { Quat } from '../math/quat.js';
@@ -10,16 +12,17 @@ import { BoundingBox } from '../shape/bounding-box.js';
 import {
     ADDRESS_CLAMP_TO_EDGE,
     BUFFER_DYNAMIC,
-    CLEARFLAG_COLOR, CLEARFLAG_DEPTH,
+    CLEARFLAG_COLOR, CLEARFLAG_DEPTH, CLEARFLAG_STENCIL,
     CULLFACE_BACK, CULLFACE_FRONT, CULLFACE_FRONTANDBACK, CULLFACE_NONE,
     FILTER_LINEAR, FILTER_NEAREST,
-    FUNC_ALWAYS, FUNC_LESS,
+    FUNC_ALWAYS, FUNC_LESS, FUNC_LESSEQUAL,
     PIXELFORMAT_DEPTH, PIXELFORMAT_R8_G8_B8_A8, PIXELFORMAT_RGBA16F, PIXELFORMAT_RGBA32F,
     PRIMITIVE_TRIANGLES,
     SEMANTIC_ATTR, SEMANTIC_POSITION,
     STENCILOP_KEEP,
-    TEXHINT_SHADOWMAP
-} from '../graphics/graphics.js';
+    TEXHINT_SHADOWMAP,
+    TEXTURETYPE_DEFAULT
+} from '../graphics/constants.js';
 import { createShaderFromCode } from '../graphics/program-lib/utils.js';
 import { drawQuadWithShader } from '../graphics/simple-post-effect.js';
 import { shaderChunks } from '../graphics/program-lib/chunks/chunks.js';
@@ -33,7 +36,8 @@ import {
     BLUR_GAUSSIAN,
     COMPUPDATED_INSTANCES, COMPUPDATED_LIGHTS,
     FOG_NONE, FOG_LINEAR,
-    LIGHTTYPE_DIRECTIONAL, LIGHTTYPE_POINT, LIGHTTYPE_SPOT,
+    LIGHTTYPE_DIRECTIONAL, LIGHTTYPE_OMNI, LIGHTTYPE_SPOT,
+    LIGHTSHAPE_PUNCTUAL,
     MASK_BAKED, MASK_DYNAMIC, MASK_LIGHTMAP,
     PROJECTION_ORTHOGRAPHIC, PROJECTION_PERSPECTIVE,
     SHADER_SHADOW,
@@ -90,8 +94,8 @@ var viewR = new Mat4();
 var viewPosL = new Vec3();
 var viewPosR = new Vec3();
 var projL, projR;
-var viewMat3L = new Mat4();
-var viewMat3R = new Mat4();
+var viewMat3L = new Mat3();
+var viewMat3R = new Mat3();
 var viewProjMatL = new Mat4();
 var viewProjMatR = new Mat4();
 
@@ -101,7 +105,6 @@ var worldMatZ = new Vec3();
 
 var frustumDiagonal = new Vec3();
 var tempSphere = { center: null, radius: 0 };
-var meshPos;
 var visibleSceneAabb = new BoundingBox();
 var boneTextureSize = [0, 0, 0, 0];
 var boneTexture, instancingData, modelMatrix, normalMatrix;
@@ -116,6 +119,11 @@ var skipRenderCamera = null;
 var _skipRenderCounter = 0;
 var skipRenderAfter = 0;
 
+var _skinUpdateIndex = 0;
+
+var _tempMaterialSet = new Set();
+
+
 // The 8 points of the camera frustum transformed to light space
 var frustumPoints = [];
 for (var fp = 0; fp < 8; fp++) {
@@ -125,7 +133,7 @@ for (var fp = 0; fp < 8; fp++) {
 function _getFrustumPoints(camera, farClip, points) {
     var nearClip = camera._nearClip;
     var fov = camera._fov * Math.PI / 180.0;
-    var aspect = camera._aspect;
+    var aspect = camera._aspectRatio;
     var projection = camera._projection;
 
     var x, y;
@@ -312,35 +320,29 @@ function gaussWeights(kernelSize) {
 
 function createShadowCamera(device, shadowType, type) {
     // We don't need to clear the color buffer if we're rendering a depth map
-    var flags = CLEARFLAG_DEPTH;
     var hwPcf = shadowType === SHADOW_PCF5 || (shadowType === SHADOW_PCF3 && device.webgl2);
-    if (type === LIGHTTYPE_POINT) hwPcf = false;
-    if (!hwPcf) flags |= CLEARFLAG_COLOR;
+    if (type === LIGHTTYPE_OMNI) {
+        hwPcf = false;
+    }
+
     var shadowCam = new Camera();
 
     if (shadowType >= SHADOW_VSM8 && shadowType <= SHADOW_VSM32) {
-        shadowCam.clearColor[0] = 0;
-        shadowCam.clearColor[1] = 0;
-        shadowCam.clearColor[2] = 0;
-        shadowCam.clearColor[3] = 0;
+        shadowCam.clearColor = new Color(0, 0, 0, 0);
     } else {
-        shadowCam.clearColor[0] = 1;
-        shadowCam.clearColor[1] = 1;
-        shadowCam.clearColor[2] = 1;
-        shadowCam.clearColor[3] = 1;
+        shadowCam.clearColor = new Color(1, 1, 1, 1);
     }
 
-    shadowCam.clearDepth = 1;
-    shadowCam.clearFlags = flags;
-    shadowCam.clearStencil = null;
+    shadowCam.clearColorBuffer = !hwPcf;
+    shadowCam.clearDepthBuffer = true;
+    shadowCam.clearStencilBuffer = false;
 
-    shadowCam._node = new GraphNode();
+    shadowCam.node = new GraphNode();
 
     return shadowCam;
 }
 
-function getShadowMapFromCache(device, res, mode, layer) {
-    if (!layer) layer = 0;
+function getShadowMapFromCache(device, res, mode, layer = 0) {
     var id = layer * 10000 + res;
     var shadowBuffer = shadowMapCache[mode][id];
     if (!shadowBuffer) {
@@ -352,8 +354,8 @@ function getShadowMapFromCache(device, res, mode, layer) {
 
 function createShadowBuffer(device, light) {
     var shadowBuffer;
-    if (light._type === LIGHTTYPE_POINT) {
-        if (light._shadowType > SHADOW_PCF3) light._shadowType = SHADOW_PCF3; // no VSM or HW PCF point lights yet
+    if (light._type === LIGHTTYPE_OMNI) {
+        if (light._shadowType > SHADOW_PCF3) light._shadowType = SHADOW_PCF3; // no VSM or HW PCF omni lights yet
         if (light._cacheShadowMap) {
             shadowBuffer = shadowMapCubeCache[light._shadowResolution];
             if (!shadowBuffer) {
@@ -394,131 +396,128 @@ function getDepthKey(meshInstance) {
 
 /**
  * @class
- * @name pc.ForwardRenderer
+ * @name ForwardRenderer
  * @classdesc The forward renderer render scene objects.
  * @description Creates a new forward renderer object.
- * @param {pc.GraphicsDevice} graphicsDevice - The graphics device used by the renderer.
+ * @param {GraphicsDevice} graphicsDevice - The graphics device used by the renderer.
  */
-function ForwardRenderer(graphicsDevice) {
-    this.device = graphicsDevice;
-    var device = this.device;
+class ForwardRenderer {
+    constructor(graphicsDevice) {
+        this.device = graphicsDevice;
+        var device = this.device;
 
-    this._shadowDrawCalls = 0;
-    this._forwardDrawCalls = 0;
-    this._skinDrawCalls = 0;
-    this._camerasRendered = 0;
-    this._materialSwitches = 0;
-    this._shadowMapUpdates = 0;
-    this._shadowMapTime = 0;
-    this._depthMapTime = 0;
-    this._forwardTime = 0;
-    this._cullTime = 0;
-    this._sortTime = 0;
-    this._skinTime = 0;
-    this._morphTime = 0;
-    this._instancingTime = 0;
+        this._shadowDrawCalls = 0;
+        this._forwardDrawCalls = 0;
+        this._skinDrawCalls = 0;
+        this._camerasRendered = 0;
+        this._materialSwitches = 0;
+        this._shadowMapUpdates = 0;
+        this._shadowMapTime = 0;
+        this._depthMapTime = 0;
+        this._forwardTime = 0;
+        this._cullTime = 0;
+        this._sortTime = 0;
+        this._skinTime = 0;
+        this._morphTime = 0;
+        this._instancingTime = 0;
+        this._layerCompositionUpdateTime = 0;
 
-    // Shaders
-    var library = device.getProgramLibrary();
-    this.library = library;
+        // Shaders
+        var library = device.getProgramLibrary();
+        this.library = library;
 
-    // Uniforms
-    var scope = device.scope;
-    this.projId = scope.resolve('matrix_projection');
-    this.projSkyboxId = scope.resolve('matrix_projectionSkybox');
-    this.viewId = scope.resolve('matrix_view');
-    this.viewId3 = scope.resolve('matrix_view3');
-    this.viewInvId = scope.resolve('matrix_viewInverse');
-    this.viewProjId = scope.resolve('matrix_viewProjection');
-    this.viewPos = new Float32Array(3);
-    this.viewPosId = scope.resolve('view_position');
-    this.nearClipId = scope.resolve('camera_near');
-    this.farClipId = scope.resolve('camera_far');
-    this.cameraParamsId = scope.resolve('camera_params');
-    this.shadowMapLightRadiusId = scope.resolve('light_radius');
+        // Uniforms
+        var scope = device.scope;
+        this.projId = scope.resolve('matrix_projection');
+        this.projSkyboxId = scope.resolve('matrix_projectionSkybox');
+        this.viewId = scope.resolve('matrix_view');
+        this.viewId3 = scope.resolve('matrix_view3');
+        this.viewInvId = scope.resolve('matrix_viewInverse');
+        this.viewProjId = scope.resolve('matrix_viewProjection');
+        this.viewPos = new Float32Array(3);
+        this.viewPosId = scope.resolve('view_position');
+        this.nearClipId = scope.resolve('camera_near');
+        this.farClipId = scope.resolve('camera_far');
+        this.cameraParamsId = scope.resolve('camera_params');
+        this.shadowMapLightRadiusId = scope.resolve('light_radius');
 
-    this.fogColorId = scope.resolve('fog_color');
-    this.fogStartId = scope.resolve('fog_start');
-    this.fogEndId = scope.resolve('fog_end');
-    this.fogDensityId = scope.resolve('fog_density');
+        this.fogColorId = scope.resolve('fog_color');
+        this.fogStartId = scope.resolve('fog_start');
+        this.fogEndId = scope.resolve('fog_end');
+        this.fogDensityId = scope.resolve('fog_density');
 
-    this.modelMatrixId = scope.resolve('matrix_model');
-    this.normalMatrixId = scope.resolve('matrix_normal');
-    this.poseMatrixId = scope.resolve('matrix_pose[0]');
-    this.boneTextureId = scope.resolve('texture_poseMap');
-    this.boneTextureSizeId = scope.resolve('texture_poseMapSize');
+        this.modelMatrixId = scope.resolve('matrix_model');
+        this.normalMatrixId = scope.resolve('matrix_normal');
+        this.poseMatrixId = scope.resolve('matrix_pose[0]');
+        this.boneTextureId = scope.resolve('texture_poseMap');
+        this.boneTextureSizeId = scope.resolve('texture_poseMapSize');
 
-    this.morphWeightsA = scope.resolve('morph_weights_a');
-    this.morphWeightsB = scope.resolve('morph_weights_b');
-    this.morphPositionTex = scope.resolve('morphPositionTex');
-    this.morphNormalTex = scope.resolve('morphNormalTex');
-    this.morphTexParams = scope.resolve('morph_tex_params');
+        this.morphWeightsA = scope.resolve('morph_weights_a');
+        this.morphWeightsB = scope.resolve('morph_weights_b');
+        this.morphPositionTex = scope.resolve('morphPositionTex');
+        this.morphNormalTex = scope.resolve('morphNormalTex');
+        this.morphTexParams = scope.resolve('morph_tex_params');
 
-    this.alphaTestId = scope.resolve('alpha_ref');
-    this.opacityMapId = scope.resolve('texture_opacityMap');
+        this.alphaTestId = scope.resolve('alpha_ref');
+        this.opacityMapId = scope.resolve('texture_opacityMap');
 
-    this.ambientId = scope.resolve("light_globalAmbient");
-    this.exposureId = scope.resolve("exposure");
-    this.skyboxIntensityId = scope.resolve("skyboxIntensity");
-    this.lightColorId = [];
-    this.lightDir = [];
-    this.lightDirId = [];
-    this.lightShadowMapId = [];
-    this.lightShadowMatrixId = [];
-    this.lightShadowParamsId = [];
-    this.lightShadowMatrixVsId = [];
-    this.lightShadowParamsVsId = [];
-    this.lightDirVs = [];
-    this.lightDirVsId = [];
-    this.lightRadiusId = [];
-    this.lightPos = [];
-    this.lightPosId = [];
-    this.lightInAngleId = [];
-    this.lightOutAngleId = [];
-    this.lightPosVsId = [];
-    this.lightCookieId = [];
-    this.lightCookieIntId = [];
-    this.lightCookieMatrixId = [];
-    this.lightCookieOffsetId = [];
+        this.ambientId = scope.resolve("light_globalAmbient");
+        this.exposureId = scope.resolve("exposure");
+        this.skyboxIntensityId = scope.resolve("skyboxIntensity");
+        this.lightColorId = [];
+        this.lightDir = [];
+        this.lightDirId = [];
+        this.lightShadowMapId = [];
+        this.lightShadowMatrixId = [];
+        this.lightShadowParamsId = [];
+        this.lightShadowMatrixVsId = [];
+        this.lightShadowParamsVsId = [];
+        this.lightDirVs = [];
+        this.lightDirVsId = [];
+        this.lightRadiusId = [];
+        this.lightPos = [];
+        this.lightPosId = [];
+        this.lightWidth = [];
+        this.lightWidthId = [];
+        this.lightHeight = [];
+        this.lightHeightId = [];
+        this.lightInAngleId = [];
+        this.lightOutAngleId = [];
+        this.lightPosVsId = [];
+        this.lightCookieId = [];
+        this.lightCookieIntId = [];
+        this.lightCookieMatrixId = [];
+        this.lightCookieOffsetId = [];
 
-    this.depthMapId = scope.resolve('uDepthMap');
-    this.screenSizeId = scope.resolve('uScreenSize');
-    this._screenSize = new Float32Array(4);
+        this.depthMapId = scope.resolve('uDepthMap');
+        this.screenSizeId = scope.resolve('uScreenSize');
+        this._screenSize = new Float32Array(4);
 
-    this.sourceId = scope.resolve("source");
-    this.pixelOffsetId = scope.resolve("pixelOffset");
-    this.weightId = scope.resolve("weight[0]");
-    this.blurVsmShaderCode = [shaderChunks.blurVSMPS, "#define GAUSS\n" + shaderChunks.blurVSMPS];
-    var packed = "#define PACKED\n";
-    this.blurPackedVsmShaderCode = [packed + this.blurVsmShaderCode[0], packed + this.blurVsmShaderCode[1]];
-    this.blurVsmShader = [{}, {}];
-    this.blurPackedVsmShader = [{}, {}];
-    this.blurVsmWeights = {};
+        this.sourceId = scope.resolve("source");
+        this.pixelOffsetId = scope.resolve("pixelOffset");
+        this.weightId = scope.resolve("weight[0]");
+        this.blurVsmShaderCode = [shaderChunks.blurVSMPS, "#define GAUSS\n" + shaderChunks.blurVSMPS];
+        var packed = "#define PACKED\n";
+        this.blurPackedVsmShaderCode = [packed + this.blurVsmShaderCode[0], packed + this.blurVsmShaderCode[1]];
+        this.blurVsmShader = [{}, {}];
+        this.blurPackedVsmShader = [{}, {}];
+        this.blurVsmWeights = {};
 
-    this.polygonOffsetId = scope.resolve("polygonOffset");
-    this.polygonOffset = new Float32Array(2);
+        this.twoSidedLightingNegScaleFactorId = scope.resolve("twoSidedLightingNegScaleFactor");
 
-    this.fogColor = new Float32Array(3);
-    this.ambientColor = new Float32Array(3);
-}
+        this.polygonOffsetId = scope.resolve("polygonOffset");
+        this.polygonOffset = new Float32Array(2);
 
-function mat3FromMat4(m3, m4) {
-    m3.data[0] = m4.data[0];
-    m3.data[1] = m4.data[1];
-    m3.data[2] = m4.data[2];
+        this.fogColor = new Float32Array(3);
+        this.ambientColor = new Float32Array(3);
 
-    m3.data[3] = m4.data[4];
-    m3.data[4] = m4.data[5];
-    m3.data[5] = m4.data[6];
+        this.cameraParams = new Float32Array(4);
 
-    m3.data[6] = m4.data[8];
-    m3.data[7] = m4.data[9];
-    m3.data[8] = m4.data[10];
-}
+        // placeholder texture for area light LUTs
+        this._createAreaLightPlaceholderLuts();
+    }
 
-Object.assign(ForwardRenderer.prototype, {
-
-    sortCompare: function (drawCallA, drawCallB) {
+    sortCompare(drawCallA, drawCallB) {
         if (drawCallA.layer === drawCallB.layer) {
             if (drawCallA.drawOrder && drawCallB.drawOrder) {
                 return drawCallA.drawOrder - drawCallB.drawOrder;
@@ -530,9 +529,9 @@ Object.assign(ForwardRenderer.prototype, {
         }
 
         return drawCallB._key[SORTKEY_FORWARD] - drawCallA._key[SORTKEY_FORWARD];
-    },
+    }
 
-    sortCompareMesh: function (drawCallA, drawCallB) {
+    sortCompareMesh(drawCallA, drawCallB) {
         if (drawCallA.layer === drawCallB.layer) {
             if (drawCallA.drawOrder && drawCallB.drawOrder) {
                 return drawCallA.drawOrder - drawCallB.drawOrder;
@@ -549,9 +548,9 @@ Object.assign(ForwardRenderer.prototype, {
         }
 
         return keyB - keyA;
-    },
+    }
 
-    depthSortCompare: function (drawCallA, drawCallB) {
+    depthSortCompare(drawCallA, drawCallB) {
         keyA = drawCallA._key[SORTKEY_DEPTH];
         keyB = drawCallB._key[SORTKEY_DEPTH];
 
@@ -560,50 +559,29 @@ Object.assign(ForwardRenderer.prototype, {
         }
 
         return keyB - keyA;
-    },
+    }
 
-    lightCompare: function (lightA, lightB) {
+    lightCompare(lightA, lightB) {
         return lightA.key - lightB.key;
-    },
+    }
 
-    _isVisible: function (camera, meshInstance) {
-        if (!meshInstance.visible) return false;
-
-        // custom visibility method on MeshInstance
-        if (meshInstance.isVisibleFunc) {
-            return meshInstance.isVisibleFunc(camera);
-        }
-
-        meshPos = meshInstance.aabb.center;
-        if (meshInstance._aabb._radiusVer !== meshInstance._aabbVer) {
-            meshInstance._aabb._radius = meshInstance._aabb.halfExtents.length();
-            meshInstance._aabb._radiusVer = meshInstance._aabbVer;
-        }
-
-        tempSphere.radius = meshInstance._aabb._radius;
-        tempSphere.center = meshPos;
-
-        return camera.frustum.containsSphere(tempSphere);
-    },
-
-    getShadowCamera: function (device, light) {
+    getShadowCamera(device, light) {
         var shadowCam = light._shadowCamera;
-        var shadowBuffer;
 
         if (shadowCam === null) {
             shadowCam = light._shadowCamera = createShadowCamera(device, light._shadowType, light._type);
             createShadowBuffer(device, light);
         } else {
-            shadowBuffer = shadowCam.renderTarget;
+            var shadowBuffer = shadowCam.renderTarget;
             if ((shadowBuffer.width !== light._shadowResolution) || (shadowBuffer.height !== light._shadowResolution)) {
                 createShadowBuffer(device, light);
             }
         }
 
         return shadowCam;
-    },
+    }
 
-    updateCameraFrustum: function (camera) {
+    updateCameraFrustum(camera) {
         if (camera.vrDisplay && camera.vrDisplay.presenting) {
             projMat = camera.vrDisplay.combinedProj;
             var parent = camera._node.parent;
@@ -624,10 +602,12 @@ Object.assign(ForwardRenderer.prototype, {
             return;
         }
 
-        projMat = camera.getProjectionMatrix();
-        if (camera.overrideCalculateProjection) camera.calculateProjection(projMat, VIEW_CENTER);
+        projMat = camera.projectionMatrix;
+        if (camera.calculateProjection) {
+            camera.calculateProjection(projMat, VIEW_CENTER);
+        }
 
-        if (camera.overrideCalculateTransform) {
+        if (camera.calculateTransform) {
             camera.calculateTransform(viewInvMat, VIEW_CENTER);
         } else {
             var pos = camera._node.getPosition();
@@ -639,10 +619,10 @@ Object.assign(ForwardRenderer.prototype, {
 
         viewProjMat.mul2(projMat, viewMat);
         camera.frustum.setFromMat4(viewProjMat);
-    },
+    }
 
     // make sure colorWrite is set to true to all channels, if you want to fully clear the target
-    setCamera: function (camera, target, clear, cullBorder) {
+    setCamera(camera, target, clear, cullBorder) {
         var vrDisplay = camera.vrDisplay;
         var parent, transform;
 
@@ -651,13 +631,13 @@ Object.assign(ForwardRenderer.prototype, {
             projL = vrDisplay.leftProj;
             projR = vrDisplay.rightProj;
             projMat = vrDisplay.combinedProj;
-            if (camera.overrideCalculateProjection) {
+            if (camera.calculateProjection) {
                 camera.calculateProjection(projL, VIEW_LEFT);
                 camera.calculateProjection(projR, VIEW_RIGHT);
                 camera.calculateProjection(projMat, VIEW_CENTER);
             }
 
-            if (camera.overrideCalculateTransform) {
+            if (camera.calculateTransform) {
                 camera.calculateTransform(viewInvL, VIEW_LEFT);
                 camera.calculateTransform(viewInvR, VIEW_RIGHT);
                 camera.calculateTransform(viewInvMat, VIEW_CENTER);
@@ -694,8 +674,8 @@ Object.assign(ForwardRenderer.prototype, {
             }
 
             // View 3x3 LR
-            mat3FromMat4(viewMat3L, viewL);
-            mat3FromMat4(viewMat3R, viewR);
+            viewMat3L.setFromMat4(viewL);
+            viewMat3R.setFromMat4(viewR);
 
             // ViewProjection LR
             viewProjMatL.mul2(projL, viewL);
@@ -729,7 +709,7 @@ Object.assign(ForwardRenderer.prototype, {
                     view.viewOffMat.copy(view.viewMat);
                 }
 
-                mat3FromMat4(view.viewMat3, view.viewOffMat);
+                view.viewMat3.setFromMat4(view.viewOffMat);
                 view.projViewOffMat.mul2(view.projMat, view.viewOffMat);
 
                 view.position[0] = view.viewInvOffMat.data[12];
@@ -740,15 +720,17 @@ Object.assign(ForwardRenderer.prototype, {
             }
         } else {
             // Projection Matrix
-            projMat = camera.getProjectionMatrix();
-            if (camera.overrideCalculateProjection) camera.calculateProjection(projMat, VIEW_CENTER);
+            projMat = camera.projectionMatrix;
+            if (camera.calculateProjection) {
+                camera.calculateProjection(projMat, VIEW_CENTER);
+            }
             this.projId.setValue(projMat.data);
 
             // Skybox Projection Matrix
             this.projSkyboxId.setValue(camera.getProjectionMatrixSkybox().data);
 
             // ViewInverse Matrix
-            if (camera.overrideCalculateTransform) {
+            if (camera.calculateTransform) {
                 camera.calculateTransform(viewInvMat, VIEW_CENTER);
             } else {
                 var pos = camera._node.getPosition();
@@ -762,7 +744,7 @@ Object.assign(ForwardRenderer.prototype, {
             this.viewId.setValue(viewMat.data);
 
             // View 3x3
-            mat3FromMat4(viewMat3, viewMat);
+            viewMat3.setFromMat4(viewMat);
             this.viewId3.setValue(viewMat3.data);
 
             // ViewProjection Matrix
@@ -783,34 +765,201 @@ Object.assign(ForwardRenderer.prototype, {
         // Near and far clip values
         this.nearClipId.setValue(camera._nearClip);
         this.farClipId.setValue(camera._farClip);
-        this.cameraParamsId.setValue(camera._shaderParams);
 
+        var n = camera._nearClip;
+        var f = camera._farClip;
+        this.cameraParams[0] = 1 / f;
+        this.cameraParams[1] = f;
+        this.cameraParams[2] = (1 - f / n) * 0.5;
+        this.cameraParams[3] = (1 + f / n) * 0.5;
+        this.cameraParamsId.setValue(this.cameraParams);
+
+        this.clearView(camera, target, clear, false);
+
+        var device = this.device;
+        var pixelWidth = target ? target.width : device.width;
+        var pixelHeight = target ? target.height : device.height;
+
+        var scissorRect = camera.scissorRect;
+        var x = Math.floor(scissorRect.x * pixelWidth);
+        var y = Math.floor(scissorRect.y * pixelHeight);
+        var w = Math.floor(scissorRect.z * pixelWidth);
+        var h = Math.floor(scissorRect.w * pixelHeight);
+        device.setScissor(x, y, w, h);
+
+        if (cullBorder) device.setScissor(1, 1, pixelWidth - 2, pixelHeight - 2); // optionally clip borders when rendering
+    }
+
+    clearView(camera, target, clear, forceWrite, options) {
         var device = this.device;
         device.setRenderTarget(target);
         device.updateBegin();
 
-        var rect = camera.getRect();
+        if (forceWrite) {
+            device.setColorWrite(true, true, true, true);
+            device.setDepthWrite(true);
+        }
+
+        var rect = camera.rect;
         var pixelWidth = target ? target.width : device.width;
         var pixelHeight = target ? target.height : device.height;
         var x = Math.floor(rect.x * pixelWidth);
         var y = Math.floor(rect.y * pixelHeight);
-        var w = Math.floor(rect.width * pixelWidth);
-        var h = Math.floor(rect.height * pixelHeight);
+        var w = Math.floor(rect.z * pixelWidth);
+        var h = Math.floor(rect.w * pixelHeight);
         device.setViewport(x, y, w, h);
         device.setScissor(x, y, w, h);
-        if (clear) device.clear(camera._clearOptions); // clear full RT
 
-        rect = camera._scissorRect;
-        x = Math.floor(rect.x * pixelWidth);
-        y = Math.floor(rect.y * pixelHeight);
-        w = Math.floor(rect.width * pixelWidth);
-        h = Math.floor(rect.height * pixelHeight);
-        device.setScissor(x, y, w, h);
+        if (clear) {
+            // use camera clear options if any
+            if (!options)
+                options = camera._clearOptions;
 
-        if (cullBorder) device.setScissor(1, 1, pixelWidth - 2, pixelHeight - 2); // optionally clip borders when rendering
-    },
+            device.clear(options ? options : {
+                color: [camera._clearColor.r, camera._clearColor.g, camera._clearColor.b, camera._clearColor.a],
+                depth: camera._clearDepth,
+                flags: (camera._clearColorBuffer ? CLEARFLAG_COLOR : 0) |
+                       (camera._clearDepthBuffer ? CLEARFLAG_DEPTH : 0) |
+                       (camera._clearStencilBuffer ? CLEARFLAG_STENCIL : 0),
+                stencil: camera._clearStencil
+            }); // clear full RT
+        }
+    }
 
-    dispatchGlobalLights: function (scene) {
+    // placeholder LUT textures for area light
+    _createAreaLightPlaceholderLuts() {
+        var placeholderLutTex =  new Texture(this.device, {
+            width: 2,
+            height: 2,
+            format: PIXELFORMAT_R8_G8_B8_A8
+        });
+        placeholderLutTex.name = 'placeholder';
+
+        var pixels = placeholderLutTex.lock();
+        for (var i = 0; i < 4; i++) {
+            for (var c = 0; c < 4; c++) {
+                pixels[i * 4 + c] = 0;
+            }
+        }
+        placeholderLutTex.unlock();
+
+        this.device.scope.resolve('areaLightsLutTex1').setValue(placeholderLutTex);
+        this.device.scope.resolve('areaLightsLutTex2').setValue(placeholderLutTex);
+    }
+
+    // creates LUT texture used by area lights
+    _uploadAreaLightLuts(resource) {
+
+        function createTexture(device, data, format) {
+            var tex = new Texture(device, {
+                width: 64,
+                height: 64,
+                format: format,
+                addressU: ADDRESS_CLAMP_TO_EDGE,
+                addressV: ADDRESS_CLAMP_TO_EDGE,
+                type: TEXTURETYPE_DEFAULT,
+                magFilter: FILTER_LINEAR,
+                minFilter: FILTER_NEAREST,
+                anisotropy: 1
+            });
+
+            tex.lock().set(data);
+            tex.unlock();
+            tex.upload();
+
+            return tex;
+        }
+
+        function offsetScale(data, offset, scale) {
+
+            var count = data.length;
+            var ret = new Float32Array(count);
+            for (var i = 0; i < count; i++) {
+                var n = i % 4;
+                ret[i] = (data[i] + offset[n]) * scale[n];
+            }
+            return ret;
+        }
+
+        function convertToHalfFloat(data) {
+
+            var count = data.length;
+            var ret = new Uint16Array(count);
+            var float2Half = math.float2Half;
+            for (var i = 0; i < count; i++) {
+                ret[i] = float2Half(data[i]);
+            }
+
+            return ret;
+        }
+
+        function convertToUint(data){
+
+            var count = data.length;
+            var ret = new Uint8ClampedArray(count);
+            for (var i = 0; i < count; i++) {
+                ret[i] = data[i] * 255;
+            }
+
+            return ret;
+        }
+
+        // create lut textures
+        var versions = new Int16Array(resource, 0, 2);
+
+        var luts = {
+            data1: new Float32Array(resource, 4, 16384),
+            data2: new Float32Array(resource, 4 + 16384 * 4, 16384),
+            majorVersion: versions[0],
+            minorVersion: versions[1]
+        };
+
+        if (luts.majorVersion !== 0 || luts.minorVersion !== 1) {
+            console.warn(`areaLightLuts asset version: ${luts.majorVersion}.${luts.minorVersion} is not supported in current engine version!`);
+        } else {
+            var device = this.device;
+            var data1, data2;
+            var format = device.areaLightLutFormat;
+
+            // pick format for lut texture
+            if (format === PIXELFORMAT_RGBA32F) {
+
+                // float
+                data1 = luts.data1;
+                data2 = luts.data2;
+
+            } else if (format === PIXELFORMAT_RGBA16F) {
+
+                // half float
+                data1 = convertToHalfFloat(luts.data1);
+                data2 = convertToHalfFloat(luts.data2);
+
+            } else {
+
+                // low precision format
+                // offset and scale to avoid clipping and increase precision - this is undone in the shader
+
+                var o1 = [0.0, 0.2976, 0.01381, 0.0];
+                var s1 = [0.999, 3.08737, 1.6546, 0.603249];
+
+                var o2 = [-0.306897, 0.0, 0.0, 0.0];
+                var s2 = [1.442787, 1.0, 1.0, 1.0];
+
+                data1 = convertToUint(offsetScale(luts.data1, o1, s1));
+                data2 = convertToUint(offsetScale(luts.data2, o2, s2));
+
+            }
+
+            var tex1 = createTexture(device, data1, format);
+            var tex2 = createTexture(device, data2, format);
+
+            // assign to scope variables
+            device.scope.resolve('areaLightsLutTex1').setValue(tex1);
+            device.scope.resolve('areaLightsLutTex2').setValue(tex2);
+        }
+    }
+
+    dispatchGlobalLights(scene) {
         var i;
         this.mainLight = -1;
 
@@ -825,9 +974,9 @@ Object.assign(ForwardRenderer.prototype, {
         this.ambientId.setValue(this.ambientColor);
         this.exposureId.setValue(scene.exposure);
         if (scene.skyboxModel) this.skyboxIntensityId.setValue(scene.skyboxIntensity);
-    },
+    }
 
-    _resolveLight: function (scope, i) {
+    _resolveLight(scope, i) {
         var light = "light" + i;
         this.lightColorId[i] = scope.resolve(light + "_color");
         this.lightDir[i] = new Float32Array(3);
@@ -842,6 +991,10 @@ Object.assign(ForwardRenderer.prototype, {
         this.lightRadiusId[i] = scope.resolve(light + "_radius");
         this.lightPos[i] = new Float32Array(3);
         this.lightPosId[i] = scope.resolve(light + "_position");
+        this.lightWidth[i] = new Float32Array(3);
+        this.lightWidthId[i] = scope.resolve(light + "_halfWidth");
+        this.lightHeight[i] = new Float32Array(3);
+        this.lightHeightId[i] = scope.resolve(light + "_halfHeight");
         this.lightInAngleId[i] = scope.resolve(light + "_innerConeAngle");
         this.lightOutAngleId[i] = scope.resolve(light + "_outerConeAngle");
         this.lightPosVsId[i] = scope.resolve(light + "_positionVS");
@@ -849,9 +1002,28 @@ Object.assign(ForwardRenderer.prototype, {
         this.lightCookieIntId[i] = scope.resolve(light + "_cookieIntensity");
         this.lightCookieMatrixId[i] = scope.resolve(light + "_cookieMatrix");
         this.lightCookieOffsetId[i] = scope.resolve(light + "_cookieOffset");
-    },
+    }
 
-    dispatchDirectLights: function (dirs, scene, mask) {
+    setLTCDirectionallLight(wtm, cnt, dir, campos, far) {
+        this.lightPos[cnt][0] = campos.x - dir.x * far;
+        this.lightPos[cnt][1] = campos.y - dir.y * far;
+        this.lightPos[cnt][2] = campos.z - dir.z * far;
+        this.lightPosId[cnt].setValue(this.lightPos[cnt]);
+
+        var hWidth = wtm.transformVector(new Vec3(-0.5, 0, 0));
+        this.lightWidth[cnt][0] = hWidth.x * far;
+        this.lightWidth[cnt][1] = hWidth.y * far;
+        this.lightWidth[cnt][2] = hWidth.z * far;
+        this.lightWidthId[cnt].setValue(this.lightWidth[cnt]);
+
+        var hHeight = wtm.transformVector(new Vec3(0, 0, 0.5));
+        this.lightHeight[cnt][0] = hHeight.x * far;
+        this.lightHeight[cnt][1] = hHeight.y * far;
+        this.lightHeight[cnt][2] = hHeight.z * far;
+        this.lightHeightId[cnt].setValue(this.lightHeight[cnt]);
+    }
+
+    dispatchDirectLights(dirs, scene, mask, camera) {
         var numDirs = dirs.length;
         var i;
         var directional, wtm;
@@ -879,6 +1051,11 @@ Object.assign(ForwardRenderer.prototype, {
             this.lightDir[cnt][1] = directional._direction.y;
             this.lightDir[cnt][2] = directional._direction.z;
             this.lightDirId[cnt].setValue(this.lightDir[cnt]);
+
+            if (directional.shape !== LIGHTSHAPE_PUNCTUAL) {
+                // non-punctual shape - NB directional area light specular is approximated by putting the area light at the far clip
+                this.setLTCDirectionallLight(wtm, cnt, directional._direction, camera._node.getPosition(), camera.farClip);
+            }
 
             if (directional.castShadows) {
                 var shadowMap = directional._isPcf && this.device.webgl2 ?
@@ -919,42 +1096,61 @@ Object.assign(ForwardRenderer.prototype, {
             cnt++;
         }
         return cnt;
-    },
+    }
 
-    dispatchPointLight: function (scene, scope, point, cnt) {
-        var wtm = point._node.getWorldTransform();
+    setLTCPositionalLight(wtm, cnt) {
+        var hWidth = wtm.transformVector(new Vec3(-0.5, 0, 0));
+        this.lightWidth[cnt][0] = hWidth.x;
+        this.lightWidth[cnt][1] = hWidth.y;
+        this.lightWidth[cnt][2] = hWidth.z;
+        this.lightWidthId[cnt].setValue(this.lightWidth[cnt]);
+
+        var hHeight = wtm.transformVector(new Vec3(0, 0, 0.5));
+        this.lightHeight[cnt][0] = hHeight.x;
+        this.lightHeight[cnt][1] = hHeight.y;
+        this.lightHeight[cnt][2] = hHeight.z;
+        this.lightHeightId[cnt].setValue(this.lightHeight[cnt]);
+    }
+
+    dispatchOmniLight(scene, scope, omni, cnt) {
+        var wtm = omni._node.getWorldTransform();
 
         if (!this.lightColorId[cnt]) {
             this._resolveLight(scope, cnt);
         }
 
-        this.lightRadiusId[cnt].setValue(point.attenuationEnd);
-        this.lightColorId[cnt].setValue(scene.gammaCorrection ? point._linearFinalColor : point._finalColor);
-        wtm.getTranslation(point._position);
-        this.lightPos[cnt][0] = point._position.x;
-        this.lightPos[cnt][1] = point._position.y;
-        this.lightPos[cnt][2] = point._position.z;
+        this.lightRadiusId[cnt].setValue(omni.attenuationEnd);
+        this.lightColorId[cnt].setValue(scene.gammaCorrection ? omni._linearFinalColor : omni._finalColor);
+        wtm.getTranslation(omni._position);
+        this.lightPos[cnt][0] = omni._position.x;
+        this.lightPos[cnt][1] = omni._position.y;
+        this.lightPos[cnt][2] = omni._position.z;
         this.lightPosId[cnt].setValue(this.lightPos[cnt]);
 
-        if (point.castShadows) {
-            var shadowMap = point._shadowCamera.renderTarget.colorBuffer;
+        if (omni.shape !== LIGHTSHAPE_PUNCTUAL) {
+            // non-punctual shape
+            this.setLTCPositionalLight(wtm, cnt);
+        }
+
+        if (omni.castShadows) {
+            var shadowMap = omni._shadowCamera.renderTarget.colorBuffer;
             this.lightShadowMapId[cnt].setValue(shadowMap);
-            var params = point._rendererParams;
+            var params = omni._rendererParams;
             if (params.length !== 4) params.length = 4;
-            params[0] = point._shadowResolution;
-            params[1] = point._normalOffsetBias;
-            params[2] = point.shadowBias;
-            params[3] = 1.0 / point.attenuationEnd;
+            params[0] = omni._shadowResolution;
+            params[1] = omni._normalOffsetBias;
+            params[2] = omni.shadowBias;
+            params[3] = 1.0 / omni.attenuationEnd;
             this.lightShadowParamsId[cnt].setValue(params);
         }
-        if (point._cookie) {
-            this.lightCookieId[cnt].setValue(point._cookie);
+        if (omni._cookie) {
+            this.lightCookieId[cnt].setValue(omni._cookie);
             this.lightShadowMatrixId[cnt].setValue(wtm.data);
-            this.lightCookieIntId[cnt].setValue(point.cookieIntensity);
+            this.lightCookieIntId[cnt].setValue(omni.cookieIntensity);
         }
-    },
+    }
 
-    dispatchSpotLight: function (scene, scope, spot, cnt) {
+    dispatchSpotLight(scene, scope, spot, cnt) {
         var wtm = spot._node.getWorldTransform();
 
         if (!this.lightColorId[cnt]) {
@@ -970,6 +1166,12 @@ Object.assign(ForwardRenderer.prototype, {
         this.lightPos[cnt][1] = spot._position.y;
         this.lightPos[cnt][2] = spot._position.z;
         this.lightPosId[cnt].setValue(this.lightPos[cnt]);
+
+        if (spot.shape !== LIGHTSHAPE_PUNCTUAL) {
+            // non-punctual shape
+            this.setLTCPositionalLight(wtm, cnt);
+        }
+
         // Spots shine down the negative Y axis
         wtm.getY(spot._direction).scale(-1);
         spot._direction.normalize();
@@ -1018,7 +1220,7 @@ Object.assign(ForwardRenderer.prototype, {
                 shadowCam.fov = spot._outerConeAngle * 2;
 
                 shadowCamView.setTRS(shadowCamNode.getPosition(), shadowCamNode.getRotation(), Vec3.ONE).invert();
-                shadowCamViewProj.mul2(shadowCam.getProjectionMatrix(), shadowCamView);
+                shadowCamViewProj.mul2(shadowCam.projectionMatrix, shadowCamView);
                 spot._shadowMatrix.mul2(scaleShift, shadowCamViewProj);
             }
             this.lightShadowMatrixId[cnt].setValue(spot._shadowMatrix.data);
@@ -1034,38 +1236,38 @@ Object.assign(ForwardRenderer.prototype, {
                 this.lightCookieOffsetId[cnt].setValue(spot._cookieOffsetUniform);
             }
         }
-    },
+    }
 
-    dispatchLocalLights: function (sortedLights, scene, mask, usedDirLights, staticLightList) {
+    dispatchLocalLights(sortedLights, scene, mask, usedDirLights, staticLightList) {
         var i;
-        var point, spot;
+        var omni, spot;
 
-        var pnts = sortedLights[LIGHTTYPE_POINT];
+        var omnis = sortedLights[LIGHTTYPE_OMNI];
         var spts = sortedLights[LIGHTTYPE_SPOT];
 
         var numDirs = usedDirLights;
-        var numPnts = pnts.length;
+        var numOmnis = omnis.length;
         var numSpts = spts.length;
         var cnt = numDirs;
 
         var scope = this.device.scope;
 
-        for (i = 0; i < numPnts; i++) {
-            point = pnts[i];
-            if (!(point.mask & mask)) continue;
-            if (point.isStatic) continue;
-            this.dispatchPointLight(scene, scope, point, cnt);
+        for (i = 0; i < numOmnis; i++) {
+            omni = omnis[i];
+            if (!(omni.mask & mask)) continue;
+            if (omni.isStatic) continue;
+            this.dispatchOmniLight(scene, scope, omni, cnt);
             cnt++;
         }
 
         var staticId = 0;
         if (staticLightList) {
-            point = staticLightList[staticId];
-            while (point && point._type === LIGHTTYPE_POINT) {
-                this.dispatchPointLight(scene, scope, point, cnt);
+            omni = staticLightList[staticId];
+            while (omni && omni._type === LIGHTTYPE_OMNI) {
+                this.dispatchOmniLight(scene, scope, omni, cnt);
                 cnt++;
                 staticId++;
-                point = staticLightList[staticId];
+                omni = staticLightList[staticId];
             }
         }
 
@@ -1086,9 +1288,9 @@ Object.assign(ForwardRenderer.prototype, {
                 spot = staticLightList[staticId];
             }
         }
-    },
+    }
 
-    cull: function (camera, drawCalls, visibleList) {
+    cull(camera, drawCalls, visibleList) {
         // #ifdef PROFILER
         var cullTime = now();
         var numDrawCallsCulled = 0;
@@ -1126,7 +1328,7 @@ Object.assign(ForwardRenderer.prototype, {
                 if (drawCall.mask && (drawCall.mask & cullingMask) === 0) continue;
 
                 if (drawCall.cull) {
-                    visible = this._isVisible(camera, drawCall);
+                    visible = drawCall._isVisible(camera);
                     // #ifdef PROFILER
                     numDrawCallsCulled++;
                     // #endif
@@ -1150,24 +1352,27 @@ Object.assign(ForwardRenderer.prototype, {
         // #endif
 
         return visibleLength;
-    },
+    }
 
-    cullLights: function (camera, lights) {
-        var i, light, type;
+    cullLights(camera, lights) {
+        var i, light;
         for (i = 0; i < lights.length; i++) {
             light = lights[i];
-            type = light._type;
             if (light.castShadows && light.enabled && light.shadowUpdateMode !== SHADOWUPDATE_NONE) {
-                if (type !== LIGHTTYPE_DIRECTIONAL) {
+                if (light._type !== LIGHTTYPE_DIRECTIONAL) {
                     light.getBoundingSphere(tempSphere);
-                    if (!camera.frustum.containsSphere(tempSphere)) continue;
-                    light.visibleThisFrame = true;
+                    if (camera.frustum.containsSphere(tempSphere)) {
+                        light.visibleThisFrame = true;
+                    }
                 }
             }
         }
-    },
+    }
 
-    updateCpuSkinMatrices: function (drawCalls) {
+    updateCpuSkinMatrices(drawCalls) {
+
+        _skinUpdateIndex++;
+
         var drawCallsCount = drawCalls.length;
         if (drawCallsCount === 0) return;
 
@@ -1175,21 +1380,21 @@ Object.assign(ForwardRenderer.prototype, {
         var skinTime = now();
         // #endif
 
-        var i, skin;
+        var i, si;
         for (i = 0; i < drawCallsCount; i++) {
-            skin = drawCalls[i].skinInstance;
-            if (skin) {
-                skin.updateMatrices(drawCalls[i].node);
-                skin._dirty = true;
+            si = drawCalls[i].skinInstance;
+            if (si) {
+                si.updateMatrices(drawCalls[i].node, _skinUpdateIndex);
+                si._dirty = true;
             }
         }
 
         // #ifdef PROFILER
         this._skinTime += now() - skinTime;
         // #endif
-    },
+    }
 
-    updateGpuSkinMatrices: function (drawCalls) {
+    updateGpuSkinMatrices(drawCalls) {
         // #ifdef PROFILER
         var skinTime = now();
         // #endif
@@ -1201,7 +1406,7 @@ Object.assign(ForwardRenderer.prototype, {
             skin = drawCalls[i].skinInstance;
             if (skin) {
                 if (skin._dirty) {
-                    skin.updateMatrixPalette();
+                    skin.updateMatrixPalette(drawCalls[i].node, _skinUpdateIndex);
                     skin._dirty = false;
                 }
             }
@@ -1210,9 +1415,9 @@ Object.assign(ForwardRenderer.prototype, {
         // #ifdef PROFILER
         this._skinTime += now() - skinTime;
         // #endif
-    },
+    }
 
-    updateMorphing: function (drawCalls) {
+    updateMorphing(drawCalls) {
         // #ifdef PROFILER
         var morphTime = now();
         // #endif
@@ -1228,9 +1433,9 @@ Object.assign(ForwardRenderer.prototype, {
         // #ifdef PROFILER
         this._morphTime += now() - morphTime;
         // #endif
-    },
+    }
 
-    setBaseConstants: function (device, material) {
+    setBaseConstants(device, material) {
         // Cull mode
         device.setCullMode(material.cull);
         // Alpha test
@@ -1238,9 +1443,9 @@ Object.assign(ForwardRenderer.prototype, {
             this.opacityMapId.setValue(material.opacityMap);
             this.alphaTestId.setValue(material.alphaTest);
         }
-    },
+    }
 
-    setSkinning: function (device, meshInstance, material) {
+    setSkinning(device, meshInstance, material) {
         if (meshInstance.skinInstance) {
             this._skinDrawCalls++;
             if (device.supportsBoneTextures) {
@@ -1255,18 +1460,18 @@ Object.assign(ForwardRenderer.prototype, {
                 this.poseMatrixId.setValue(meshInstance.skinInstance.matrixPalette);
             }
         }
-    },
+    }
 
     // returns number of extra draw calls to skip - used to skip auto instanced meshes draw calls. by default return 0 to not skip any additional draw calls
-    drawInstance: function (device, meshInstance, mesh, style, normal) {
+    drawInstance(device, meshInstance, mesh, style, normal) {
         instancingData = meshInstance.instancingData;
         if (instancingData) {
             if (instancingData.count > 0) {
                 this._instancedDrawCalls++;
-                this._removedByInstancing += instancingData.count;
                 device.setVertexBuffer(instancingData.vertexBuffer);
                 device.draw(mesh.primitive[style], instancingData.count);
                 if (instancingData.vertexBuffer === _autoInstanceBuffer) {
+                    this._removedByInstancing += instancingData.count;
                     meshInstance.instancingData = null;
                     return instancingData.count - 1;
                 }
@@ -1288,43 +1493,43 @@ Object.assign(ForwardRenderer.prototype, {
             device.draw(mesh.primitive[style]);
         }
         return 0;
-    },
+    }
 
     // used for stereo
-    drawInstance2: function (device, meshInstance, mesh, style) {
+    drawInstance2(device, meshInstance, mesh, style) {
         instancingData = meshInstance.instancingData;
         if (instancingData) {
             if (instancingData.count > 0) {
                 this._instancedDrawCalls++;
-                this._removedByInstancing += instancingData.count;
-                device.setVertexBuffer(instancingData.vertexBuffer);
-                device.draw(mesh.primitive[style], instancingData.count);
+                device.draw(mesh.primitive[style], instancingData.count, true);
                 if (instancingData.vertexBuffer === _autoInstanceBuffer) {
+                    this._removedByInstancing += instancingData.count;
                     meshInstance.instancingData = null;
                     return instancingData.count - 1;
                 }
             }
         } else {
             // matrices are already set
-            device.draw(mesh.primitive[style], null, true);
+            device.draw(mesh.primitive[style], undefined, true);
         }
         return 0;
-    },
+    }
 
-    renderShadows: function (lights, cameraPass) {
+    renderShadows(lights, cameraPass) {
         var device = this.device;
+        device.grabPassAvailable = false;
+
         // #ifdef PROFILER
         var shadowMapStartTime = now();
         // #endif
+
         var i, j, light, shadowShader, type, shadowCam, shadowCamNode, pass, passes, shadowType, smode;
         var numInstances;
         var meshInstance, mesh, material;
         var style;
         var settings;
         var visibleList, visibleLength;
-
         var passFlag = 1 << SHADER_SHADOW;
-        var paramName, parameter, parameters;
 
         for (i = 0; i < lights.length; i++) {
             light = lights[i];
@@ -1359,7 +1564,7 @@ Object.assign(ForwardRenderer.prototype, {
                     this.viewPosId.setValue(this.viewPos);
                     this.shadowMapLightRadiusId.setValue(light.attenuationEnd);
 
-                } else if (type === LIGHTTYPE_POINT) {
+                } else if (type === LIGHTTYPE_OMNI) {
                     cameraPos = shadowCamNode.getPosition();
                     this.viewPos[0] = cameraPos.x;
                     this.viewPos[1] = cameraPos.y;
@@ -1374,21 +1579,21 @@ Object.assign(ForwardRenderer.prototype, {
                 this.device.pushMarker("SHADOW " + light._node.name);
                 // #endif
 
-                if (type !== LIGHTTYPE_POINT) {
+                if (type !== LIGHTTYPE_OMNI) {
                     shadowCamView.setTRS(shadowCamNode.getPosition(), shadowCamNode.getRotation(), Vec3.ONE).invert();
-                    shadowCamViewProj.mul2(shadowCam.getProjectionMatrix(), shadowCamView);
+                    shadowCamViewProj.mul2(shadowCam.projectionMatrix, shadowCamView);
                     light._shadowMatrix.mul2(scaleShift, shadowCamViewProj);
                 }
 
                 if (device.webgl2) {
-                    if (type === LIGHTTYPE_POINT) {
+                    if (type === LIGHTTYPE_OMNI) {
                         device.setDepthBias(false);
                     } else {
                         device.setDepthBias(true);
                         device.setDepthBiasValues(light.shadowBias * -1000.0, light.shadowBias * -1000.0);
                     }
                 } else if (device.extStandardDerivatives) {
-                    if (type === LIGHTTYPE_POINT) {
+                    if (type === LIGHTTYPE_OMNI) {
                         this.polygonOffset[0] = 0;
                         this.polygonOffset[1] = 0;
                         this.polygonOffsetId.setValue(this.polygonOffset);
@@ -1407,7 +1612,7 @@ Object.assign(ForwardRenderer.prototype, {
                 device.setBlending(false);
                 device.setDepthWrite(true);
                 device.setDepthTest(true);
-                if (light._isPcf && device.webgl2 && type !== LIGHTTYPE_POINT) {
+                if (light._isPcf && device.webgl2 && type !== LIGHTTYPE_OMNI) {
                     device.setColorWrite(false, false, false, false);
                 } else {
                     device.setColorWrite(true, true, true, true);
@@ -1416,7 +1621,7 @@ Object.assign(ForwardRenderer.prototype, {
                 if (pass) {
                     passes = pass + 1; // predefined single pass
                 } else {
-                    pass = 0; // point light passes
+                    pass = 0; // omni light passes
                 }
 
                 while (pass < passes) {
@@ -1429,12 +1634,12 @@ Object.assign(ForwardRenderer.prototype, {
                     }
                     // #endif
 
-                    if (type === LIGHTTYPE_POINT) {
+                    if (type === LIGHTTYPE_OMNI) {
                         shadowCamNode.setRotation(pointLightRotations[pass]);
                         shadowCam.renderTarget = light._shadowCubeMap[pass];
                     }
 
-                    this.setCamera(shadowCam, shadowCam.renderTarget, true, type !== LIGHTTYPE_POINT);
+                    this.setCamera(shadowCam, shadowCam.renderTarget, true, type !== LIGHTTYPE_OMNI);
 
                     visibleList = light._visibleList[pass];
                     visibleLength = light._visibleLength[pass];
@@ -1459,30 +1664,14 @@ Object.assign(ForwardRenderer.prototype, {
                         }
 
                         if (material.chunks) {
-                            // Uniforms I (shadow): material
-                            parameters = material.parameters;
-                            for (paramName in parameters) {
-                                parameter = parameters[paramName];
-                                if (parameter.passFlags & passFlag) {
-                                    if (!parameter.scopeId) {
-                                        parameter.scopeId = device.scope.resolve(paramName);
-                                    }
-                                    parameter.scopeId.setValue(parameter.data);
-                                }
-                            }
+
                             this.setCullMode(true, false, meshInstance);
 
+                            // Uniforms I (shadow): material
+                            material.setParameters(device);
+
                             // Uniforms II (shadow): meshInstance overrides
-                            parameters = meshInstance.parameters;
-                            for (paramName in parameters) {
-                                parameter = parameters[paramName];
-                                if (parameter.passFlags & passFlag) {
-                                    if (!parameter.scopeId) {
-                                        parameter.scopeId = device.scope.resolve(paramName);
-                                    }
-                                    parameter.scopeId.setValue(parameter.data);
-                                }
-                            }
+                            meshInstance.setParameters(device, passFlag);
                         }
 
                         // set shader
@@ -1586,18 +1775,26 @@ Object.assign(ForwardRenderer.prototype, {
             this.polygonOffsetId.setValue(this.polygonOffset);
         }
 
+        device.grabPassAvailable = true;
+
         // #ifdef PROFILER
         this._shadowMapTime += now() - shadowMapStartTime;
         // #endif
-    },
+    }
 
-    updateShader: function (meshInstance, objDefs, staticLightList, pass, sortedLights) {
+    updateShader(meshInstance, objDefs, staticLightList, pass, sortedLights) {
         meshInstance.material._scene = this.scene;
+
+        // if material has dirtyBlend set, notify scene here
+        if (meshInstance.material._dirtyBlend) {
+            this.scene.layers._dirtyBlend = true;
+        }
+
         meshInstance.material.updateShader(this.device, this.scene, objDefs, staticLightList, pass, sortedLights);
         meshInstance._shader[pass] = meshInstance.material.shader;
-    },
+    }
 
-    setCullMode: function (cullFaces, flip, drawCall) {
+    setCullMode(cullFaces, flip, drawCall) {
         var material = drawCall.material;
         var mode = CULLFACE_NONE;
         if (cullFaces) {
@@ -1615,8 +1812,9 @@ Object.assign(ForwardRenderer.prototype, {
                 wt.getY(worldMatY);
                 wt.getZ(worldMatZ);
                 worldMatX.cross(worldMatX, worldMatY);
-                if (worldMatX.dot(worldMatZ) < 0)
+                if (worldMatX.dot(worldMatZ) < 0) {
                     flipFaces *= -1;
+                }
             }
 
             if (flipFaces < 0) {
@@ -1626,15 +1824,28 @@ Object.assign(ForwardRenderer.prototype, {
             }
         }
         this.device.setCullMode(mode);
-    },
 
-    setVertexBuffers: function (device, mesh) {
+        if (mode === CULLFACE_NONE && material.cull === CULLFACE_NONE) {
+            var wt2 = drawCall.node.worldTransform;
+            wt2.getX(worldMatX);
+            wt2.getY(worldMatY);
+            wt2.getZ(worldMatZ);
+            worldMatX.cross(worldMatX, worldMatY);
+            if (worldMatX.dot(worldMatZ) < 0) {
+                this.twoSidedLightingNegScaleFactorId.setValue(-1.0);
+            } else {
+                this.twoSidedLightingNegScaleFactorId.setValue(1.0);
+            }
+        }
+    }
+
+    setVertexBuffers(device, mesh) {
 
         // main vertex buffer
         device.setVertexBuffer(mesh.vertexBuffer);
-    },
+    }
 
-    setMorphing: function (device, morphInstance) {
+    setMorphing(device, morphInstance) {
 
         if (morphInstance) {
 
@@ -1673,15 +1884,15 @@ Object.assign(ForwardRenderer.prototype, {
                 this.morphWeightsB.setValue(morphInstance._shaderMorphWeightsB);
             }
         }
-    },
+    }
 
-    renderForward: function (camera, drawCalls, drawCallsCount, sortedLights, pass, cullingMask, drawCallback, layer) {
+    renderForward(camera, drawCalls, drawCallsCount, sortedLights, pass, cullingMask, drawCallback, layer) {
         var device = this.device;
         var scene = this.scene;
         var vrDisplay = camera.vrDisplay;
-        var passFlag = 1 << pass;
-
         var lightHash = layer ? layer._lightHash : 0;
+
+        var passFlag = 1 << pass;
 
         // #ifdef PROFILER
         var forwardStartTime = now();
@@ -1689,7 +1900,6 @@ Object.assign(ForwardRenderer.prototype, {
 
         var i, drawCall, mesh, material, objDefs, variantKey, lightMask, style, usedDirLights;
         var prevMaterial = null, prevObjDefs, prevLightMask, prevStatic;
-        var paramName, parameter, parameters;
         var stencilFront, stencilBack;
 
         var halfWidth = device.width * 0.5;
@@ -1763,19 +1973,10 @@ Object.assign(ForwardRenderer.prototype, {
                     }
 
                     // Uniforms I: material
-                    parameters = material.parameters;
-                    for (paramName in parameters) {
-                        parameter = parameters[paramName];
-                        if (parameter.passFlags & passFlag) {
-                            if (!parameter.scopeId) {
-                                parameter.scopeId = device.scope.resolve(paramName);
-                            }
-                            parameter.scopeId.setValue(parameter.data);
-                        }
-                    }
+                    material.setParameters(device);
 
                     if (!prevMaterial || lightMask !== prevLightMask) {
-                        usedDirLights = this.dispatchDirectLights(sortedLights[LIGHTTYPE_DIRECTIONAL], scene, lightMask);
+                        usedDirLights = this.dispatchDirectLights(sortedLights[LIGHTTYPE_DIRECTIONAL], scene, lightMask, camera);
                         this.dispatchLocalLights(sortedLights, scene, lightMask, usedDirLights, drawCall._staticLightList);
                     }
 
@@ -1793,7 +1994,16 @@ Object.assign(ForwardRenderer.prototype, {
                     }
                     device.setColorWrite(material.redWrite, material.greenWrite, material.blueWrite, material.alphaWrite);
                     device.setDepthWrite(material.depthWrite);
-                    device.setDepthTest(material.depthTest);
+
+                    // this fixes the case where the user wishes to turn off depth testing but wants to write depth
+                    if (material.depthWrite && !material.depthTest){
+                        device.setDepthFunc(FUNC_ALWAYS);
+                        device.setDepthTest(true);
+                    } else {
+                        device.setDepthFunc(FUNC_LESSEQUAL);
+                        device.setDepthTest(material.depthTest);
+                    }
+
                     device.setAlphaToCoverage(material.alphaToCoverage);
 
                     if (material.depthBias || material.slopeDepthBias) {
@@ -1841,16 +2051,7 @@ Object.assign(ForwardRenderer.prototype, {
                 }
 
                 // Uniforms II: meshInstance overrides
-                parameters = drawCall.parameters;
-                for (paramName in parameters) {
-                    parameter = parameters[paramName];
-                    if (parameter.passFlags & passFlag) {
-                        if (!parameter.scopeId) {
-                            parameter.scopeId = device.scope.resolve(paramName);
-                        }
-                        parameter.scopeId.setValue(parameter.data);
-                    }
-                }
+                drawCall.setParameters(device, passFlag);
 
                 this.setVertexBuffers(device, mesh);
                 this.setMorphing(device, drawCall.morphInstance);
@@ -1911,7 +2112,7 @@ Object.assign(ForwardRenderer.prototype, {
                         if (v === 0) {
                             i += this.drawInstance(device, drawCall, mesh, style, true);
                         } else {
-                            i += this.drawInstance2(device, drawCall, mesh, style, true);
+                            i += this.drawInstance2(device, drawCall, mesh, style);
                         }
 
                         this._forwardDrawCalls++;
@@ -1923,15 +2124,7 @@ Object.assign(ForwardRenderer.prototype, {
 
                 // Unset meshInstance overrides back to material values if next draw call will use the same material
                 if (i < drawCallsCount - 1 && drawCalls[i + 1].material === material) {
-                    for (paramName in parameters) {
-                        parameter = material.parameters[paramName];
-                        if (parameter) {
-                            if (!parameter.scopeId) {
-                                parameter.scopeId = device.scope.resolve(paramName);
-                            }
-                            parameter.scopeId.setValue(parameter.data);
-                        }
-                    }
+                    material.setParameters(device, drawCall.parameters);
                 }
 
                 prevMaterial = material;
@@ -1945,17 +2138,17 @@ Object.assign(ForwardRenderer.prototype, {
         // #ifdef PROFILER
         this._forwardTime += now() - forwardStartTime;
         // #endif
-    },
+    }
 
-    setupInstancing: function (device) {
+    setupInstancing(device) {
         if (device.enableAutoInstancing) {
             if (!_autoInstanceBuffer) {
                 _autoInstanceBuffer = new VertexBuffer(device, VertexFormat.defaultInstancingFormat, device.autoInstancingMaxObjects, BUFFER_DYNAMIC);
             }
         }
-    },
+    }
 
-    revertStaticMeshes: function (meshInstances) {
+    revertStaticMeshes(meshInstances) {
         var i;
         var drawCalls = meshInstances;
         var drawCallsCount = drawCalls.length;
@@ -1980,9 +2173,9 @@ Object.assign(ForwardRenderer.prototype, {
         for (i = 0; i < newDrawCalls.length; i++) {
             meshInstances[i] = newDrawCalls[i];
         }
-    },
+    }
 
-    prepareStaticMeshes: function (meshInstances, lights) {
+    prepareStaticMeshes(meshInstances, lights) {
         // #ifdef PROFILER
         var prepareTime = now();
         var searchTime = 0;
@@ -2031,7 +2224,7 @@ Object.assign(ForwardRenderer.prototype, {
             } else {
                 aabb = drawCall.aabb;
                 staticLights.length = 0;
-                for (lightTypePass = LIGHTTYPE_POINT; lightTypePass <= LIGHTTYPE_SPOT; lightTypePass++) {
+                for (lightTypePass = LIGHTTYPE_OMNI; lightTypePass <= LIGHTTYPE_SPOT; lightTypePass++) {
                     for (j = 0; j < lights.length; j++) {
                         light = lights[j];
                         if (light._type !== lightTypePass) continue;
@@ -2214,7 +2407,7 @@ Object.assign(ForwardRenderer.prototype, {
                         mesh2.primitive[0].indexed = true;
                         mesh2.aabb = chunkAabb;
 
-                        var instance = new MeshInstance(drawCall.node, mesh2, drawCall.material);
+                        var instance = new MeshInstance(mesh2, drawCall.material, drawCall.node);
                         instance.isStatic = drawCall.isStatic;
                         instance.visible = drawCall.visible;
                         instance.layer = drawCall.layer;
@@ -2276,64 +2469,55 @@ Object.assign(ForwardRenderer.prototype, {
         scene._stats.lastStaticPrepareTriAabbTime = triAabbTime;
         scene._stats.lastStaticPrepareCombineTime = combineTime;
         // #endif
-    },
+    }
 
-    updateShaders: function (drawCalls) {
-        // #ifdef PROFILER
-        var time = now();
-        // #endif
+    updateShaders(drawCalls) {
+        var mat, count = drawCalls.length;
+        for (var i = 0; i < count; i++) {
+            mat = drawCalls[i].material;
+            if (mat) {
+                // material not processed yet
+                if (!_tempMaterialSet.has(mat)) {
+                    _tempMaterialSet.add(mat);
 
-        var i;
-        // Collect materials
-        var materials = [];
-        for (i = 0; i < drawCalls.length; i++) {
-            var drawCall = drawCalls[i];
-            if (drawCall.material !== undefined) {
-                if (materials.indexOf(drawCall.material) === -1) {
-                    materials.push(drawCall.material);
-                }
-            }
-        }
-        // Clear material shaders
-        for (i = 0; i < materials.length; i++) {
-            var mat = materials[i];
-            if (mat.updateShader !== Material.prototype.updateShader) {
-                mat.clearVariants();
-                mat.shader = null;
-            }
-        }
-
-        // #ifdef PROFILER
-        this.scene._stats.updateShadersTime += now() - time;
-        // #endif
-    },
-
-    updateLitShaders: function (drawCalls) {
-        // #ifdef PROFILER
-        var time = now();
-        // #endif
-
-        for (var i = 0; i < drawCalls.length; i++) {
-            var drawCall = drawCalls[i];
-            if (drawCall.material !== undefined) {
-                var mat = drawCall.material;
-                if (mat.updateShader !== Material.prototype.updateShader) {
-                    if (mat.useLighting === false || (mat.emitter && !mat.emitter.lighting)) {
-                        // skip unlit standard and particles materials
-                        continue;
+                    if (mat.updateShader !== Material.prototype.updateShader) {
+                        mat.clearVariants();
+                        mat.shader = null;
                     }
-                    mat.clearVariants();
-                    mat.shader = null;
                 }
             }
         }
 
-        // #ifdef PROFILER
-        this.scene._stats.updateShadersTime += now() - time;
-        // #endif
-    },
+        // keep temp set empty
+        _tempMaterialSet.clear();
+    }
 
-    beginFrame: function (comp) {
+    updateLitShaders(drawCalls) {
+        var mat, count = drawCalls.length;
+        for (var i = 0; i < count; i++) {
+            mat = drawCalls[i].material;
+            if (mat) {
+                // material not processed yet
+                if (!_tempMaterialSet.has(mat)) {
+                    _tempMaterialSet.add(mat);
+
+                    if (mat.updateShader !== Material.prototype.updateShader) {
+
+                        // only process lit materials
+                        if (mat.useLighting && (!mat.emitter || mat.emitter.lighting)) {
+                            mat.clearVariants();
+                            mat.shader = null;
+                        }
+                    }
+                }
+            }
+        }
+
+        // keep temp set empty
+        _tempMaterialSet.clear();
+    }
+
+    beginFrame(comp) {
         var scene = this.scene;
         var meshInstances = comp._meshInstances;
         var lights = comp._lights;
@@ -2364,9 +2548,9 @@ Object.assign(ForwardRenderer.prototype, {
         for (i = 0; i < len; i++) {
             lights[i].visibleThisFrame = lights[i]._type === LIGHTTYPE_DIRECTIONAL;
         }
-    },
+    }
 
-    beginLayers: function (comp) {
+    beginLayers(comp) {
         var scene = this.scene;
         var len = comp.layerList.length;
         var layer;
@@ -2429,9 +2613,9 @@ Object.assign(ForwardRenderer.prototype, {
                 layer._staticPrepareDone = true;
             }
         }
-    },
+    }
 
-    cullLocalShadowmap: function (light, drawCalls) {
+    cullLocalShadowmap(light, drawCalls) {
         var i, type, shadowCam, shadowCamNode, passes, pass, numInstances, meshInstance, visibleList, vlen, visible;
         var lightNode;
         type = light._type;
@@ -2460,7 +2644,7 @@ Object.assign(ForwardRenderer.prototype, {
         }
 
         for (pass = 0; pass < passes; pass++) {
-            if (type === LIGHTTYPE_POINT) {
+            if (type === LIGHTTYPE_OMNI) {
                 shadowCamNode.setRotation(pointLightRotations[pass]);
                 shadowCam.renderTarget = light._shadowCubeMap[pass];
             }
@@ -2477,7 +2661,7 @@ Object.assign(ForwardRenderer.prototype, {
                 meshInstance = drawCalls[i];
                 visible = true;
                 if (meshInstance.cull) {
-                    visible = this._isVisible(shadowCam, meshInstance);
+                    visible = meshInstance._isVisible(shadowCam);
                 }
                 if (visible) {
                     visibleList[vlen] = meshInstance;
@@ -2492,10 +2676,9 @@ Object.assign(ForwardRenderer.prototype, {
             }
             visibleList.sort(this.depthSortCompare); // sort shadowmap drawcalls here, not in render
         }
-    },
+    }
 
-
-    cullDirectionalShadowmap: function (light, drawCalls, camera, pass) {
+    cullDirectionalShadowmap(light, drawCalls, camera, pass) {
         var i, shadowCam, shadowCamNode, lightNode, frustumSize, vlen, visibleList;
         var unitPerTexel, delta, p;
         var minx, miny, minz, maxx, maxy, maxz, centerx, centery;
@@ -2582,7 +2765,7 @@ Object.assign(ForwardRenderer.prototype, {
             meshInstance = drawCalls[i];
             visible = true;
             if (meshInstance.cull) {
-                visible = this._isVisible(shadowCam, meshInstance);
+                visible = meshInstance._isVisible(shadowCam);
             }
             if (visible) {
                 visibleList[vlen] = meshInstance;
@@ -2632,38 +2815,15 @@ Object.assign(ForwardRenderer.prototype, {
         settings.z = lpos.z;
         settings.orthoHeight = shadowCam.orthoHeight;
         settings.farClip = shadowCam.farClip;
-    },
+    }
 
-
-    gpuUpdate: function (drawCalls) {
+    gpuUpdate(drawCalls) {
         // skip everything with visibleThisFrame === false
         this.updateGpuSkinMatrices(drawCalls);
         this.updateMorphing(drawCalls);
-    },
+    }
 
-    clearView: function (camera, target, options) {
-        camera = camera.camera;
-        var device = this.device;
-        device.setRenderTarget(target);
-        device.updateBegin();
-
-        device.setColorWrite(true, true, true, true);
-        device.setDepthWrite(true);
-
-        var rect = camera.getRect();
-        var pixelWidth = target ? target.width : device.width;
-        var pixelHeight = target ? target.height : device.height;
-        var x = Math.floor(rect.x * pixelWidth);
-        var y = Math.floor(rect.y * pixelHeight);
-        var w = Math.floor(rect.width * pixelWidth);
-        var h = Math.floor(rect.height * pixelHeight);
-        device.setViewport(x, y, w, h);
-        device.setScissor(x, y, w, h);
-
-        device.clear(options ? options : camera._clearOptions); // clear full RT
-    },
-
-    setSceneConstants: function () {
+    setSceneConstants() {
         var i;
         var device = this.device;
         var scene = this.scene;
@@ -2696,38 +2856,18 @@ Object.assign(ForwardRenderer.prototype, {
         this._screenSize[2] = 1 / device.width;
         this._screenSize[3] = 1 / device.height;
         this.screenSizeId.setValue(this._screenSize);
-    },
+    }
 
-    renderComposition: function (comp) {
-        var device = this.device;
-        var camera;
-        var renderedRt = comp._renderedRt;
-        var renderedByCam = comp._renderedByCam;
-        var renderedLayer = comp._renderedLayer;
-        var i, layer, transparent, cameras, j, rt, k, processedThisCamera, processedThisCameraAndLayer, processedThisCameraAndRt;
-
-        // update the skybox, since this might change _meshInstances
-        if (this.scene.updateSkybox) {
-            this.scene._updateSkybox(device);
-            this.scene.updateSkybox = false;
-        }
-
-        this.beginLayers(comp);
-
-        // Update static layer data, if something's changed
-        var updated = comp._update();
-        if (updated & COMPUPDATED_LIGHTS) {
-            this.scene.updateLitShaders = true;
-        }
+    updateLightStats(comp, compUpdatedFlags) {
 
         // #ifdef PROFILER
-        if (updated & COMPUPDATED_LIGHTS || !this.scene._statsUpdated) {
+        if (compUpdatedFlags & COMPUPDATED_LIGHTS || !this.scene._statsUpdated) {
             var stats = this.scene._stats;
             stats.lights = comp._lights.length;
             stats.dynamicLights = 0;
             stats.bakedLights = 0;
             var l;
-            for (i = 0; i < stats.lights; i++) {
+            for (var i = 0; i < stats.lights; i++) {
                 l = comp._lights[i];
                 if (l.enabled) {
                     if ((l.mask & MASK_DYNAMIC) || (l.mask & MASK_BAKED)) { // if affects dynamic or baked objects in real-time
@@ -2739,11 +2879,44 @@ Object.assign(ForwardRenderer.prototype, {
                 }
             }
         }
-        if (updated & COMPUPDATED_INSTANCES || !this.scene._statsUpdated) {
+
+        if (compUpdatedFlags & COMPUPDATED_INSTANCES || !this.scene._statsUpdated) {
             this.scene._stats.meshInstances = comp._meshInstances.length;
         }
+
         this.scene._statsUpdated = true;
         // #endif
+    }
+
+    renderComposition(comp) {
+        var device = this.device;
+        var camera;
+        var renderAction, renderActions = comp._renderActions;
+        var i, layer, layerIndex, transparent;
+
+        // update the skybox, since this might change _meshInstances
+        if (this.scene.updateSkybox) {
+            this.scene._updateSkybox(device);
+            this.scene.updateSkybox = false;
+        }
+
+        this.beginLayers(comp);
+
+        // #ifdef PROFILER
+        var layerCompositionUpdateTime = now();
+        // #endif
+
+        // Update static layer data, if something's changed
+        var updated = comp._update();
+        if (updated & COMPUPDATED_LIGHTS) {
+            this.scene.updateLitShaders = true;
+        }
+
+        // #ifdef PROFILER
+        this._layerCompositionUpdateTime += now() - layerCompositionUpdateTime;
+        // #endif
+
+        this.updateLightStats(comp, updated);
 
         // Single per-frame calculations
         this.beginFrame(comp);
@@ -2751,67 +2924,57 @@ Object.assign(ForwardRenderer.prototype, {
 
         // Camera culling (once for each camera + layer)
         // Also applies meshInstance.visible and camera.cullingMask
-        var renderedLength = 0;
+        var cameraPass;
         var objects, drawCalls, visible;
-        for (i = 0; i < comp.layerList.length; i++) {
-            layer = comp.layerList[i];
-            if (!layer.enabled || !comp.subLayerEnabled[i]) continue;
-            transparent = comp.subLayerList[i];
+
+        for (i = 0; i < renderActions.length; i++) {
+            renderAction = renderActions[i];
+
+            // layer
+            layerIndex = renderAction.layerIndex;
+            layer = comp.layerList[layerIndex];
+            if (!layer.enabled || !comp.subLayerEnabled[layerIndex]) continue;
+            transparent = comp.subLayerList[layerIndex];
+
+            // camera
+            cameraPass = renderAction.cameraIndex;
+            camera = layer.cameras[cameraPass];
+            if (!camera) continue;
+            camera.frameBegin(renderAction.renderTarget);
+
+            // update camera frustum once
+            if (renderAction.firstCameraUse) {
+                this.updateCameraFrustum(camera.camera);
+                this._camerasRendered++;
+            }
+
+            // cull each layer's non-directional lights once with each camera
+            // lights aren't collected anywhere, but marked as visible
+            this.cullLights(camera.camera, layer._lights);
+
+            // cull mesh instances
             objects = layer.instances;
 
-            cameras = layer.cameras;
-            for (j = 0; j < cameras.length; j++) {
-                camera = cameras[j];
-                if (!camera) continue;
-                camera.frameBegin(layer.renderTarget);
+            // collect them into layer arrays
+            visible = transparent ? objects.visibleTransparent[cameraPass] : objects.visibleOpaque[cameraPass];
+
+            // shared objects are only culled once
+            if (!visible.done) {
+
+                if (layer.onPreCull) {
+                    layer.onPreCull(cameraPass);
+                }
+
                 drawCalls = transparent ? layer.transparentMeshInstances : layer.opaqueMeshInstances;
+                visible.length = this.cull(camera.camera, drawCalls, visible.list);
+                visible.done = true;
 
-                processedThisCamera = false;
-                processedThisCameraAndLayer = false;
-                for (k = 0; k < renderedLength; k++) {
-                    if (renderedByCam[k] === camera) {
-                        processedThisCamera = true;
-                        if (renderedLayer[k] === layer) {
-                            processedThisCameraAndLayer = true;
-                            break;
-                        }
-                    }
+                if (layer.onPostCull) {
+                    layer.onPostCull(cameraPass);
                 }
-                if (!processedThisCamera) {
-                    this.updateCameraFrustum(camera.camera); // update camera frustum once
-                    this._camerasRendered++;
-                }
-                if (!processedThisCameraAndLayer) {
-                    // cull each layer's lights once with each camera
-                    // lights aren't collected anywhere, but marked as visible
-                    this.cullLights(camera.camera, layer._lights);
-                }
-                if (!processedThisCamera || !processedThisCameraAndLayer) {
-                    renderedByCam[renderedLength] = camera;
-                    renderedLayer[renderedLength] = layer;
-                    renderedLength++;
-                }
-
-                // cull mesh instances
-                // collected into layer arrays
-                // shared objects are only culled once
-                visible = transparent ? objects.visibleTransparent[j] : objects.visibleOpaque[j];
-                if (!visible.done) {
-                    if (layer.onPreCull) {
-                        layer.onPreCull(j);
-                    }
-
-                    visible.length = this.cull(camera.camera, drawCalls, visible.list);
-                    visible.done = true;
-
-                    if (layer.onPostCull) {
-                        layer.onPostCull(j);
-                    }
-
-                }
-
-                camera.frameEnd();
             }
+
+            camera.frameEnd();
         }
 
         // Shadowmap culling for directional and visible local lights
@@ -2820,13 +2983,11 @@ Object.assign(ForwardRenderer.prototype, {
         // Also sets up local shadow camera matrices
         var light, casters;
 
-        // Local lights
-        // culled once for the whole frame
-
         // #ifdef PROFILER
         var cullTime = now();
         // #endif
 
+        // Local light casters - culled once for the whole frame
         for (i = 0; i < comp._lights.length; i++) {
             light = comp._lights[i];
             if (!light.visibleThisFrame) continue;
@@ -2836,9 +2997,7 @@ Object.assign(ForwardRenderer.prototype, {
             this.cullLocalShadowmap(light, casters);
         }
 
-        // Directional lights
-        // culled once for each camera
-        renderedLength = 0;
+        // Directional light casters - culled once for each camera
         var globalLightCounter = -1;
         for (i = 0; i < comp._lights.length; i++) {
             light = comp._lights[i];
@@ -2846,8 +3005,8 @@ Object.assign(ForwardRenderer.prototype, {
             globalLightCounter++;
             if (!light.castShadows || !light.enabled || light.shadowUpdateMode === SHADOWUPDATE_NONE) continue;
             casters = comp._lightShadowCasters[i];
-            cameras = comp._globalLightCameras[globalLightCounter];
-            for (j = 0; j < cameras.length; j++) {
+            let cameras = comp._globalLightCameras[globalLightCounter];
+            for (let j = 0; j < cameras.length; j++) {
                 this.cullDirectionalShadowmap(light, casters, cameras[j].camera, comp._globalLightCameraIds[globalLightCounter][j]);
             }
         }
@@ -2862,31 +3021,33 @@ Object.assign(ForwardRenderer.prototype, {
         this.gpuUpdate(comp._meshInstances);
 
         // Shadow render for all local visible culled lights
-        this.renderShadows(comp._sortedLights[LIGHTTYPE_SPOT]);
-        this.renderShadows(comp._sortedLights[LIGHTTYPE_POINT]);
+        this.renderShadows(comp._splitLights[LIGHTTYPE_SPOT]);
+        this.renderShadows(comp._splitLights[LIGHTTYPE_OMNI]);
 
         // Rendering
-        renderedLength = 0;
-        var cameraPass;
         var sortTime, draws, drawTime;
-        for (i = 0; i < comp._renderList.length; i++) {
-            layer = comp.layerList[comp._renderList[i]];
-            if (!layer.enabled || !comp.subLayerEnabled[comp._renderList[i]]) continue;
-            objects = layer.instances;
-            transparent = comp.subLayerList[comp._renderList[i]];
-            cameraPass = comp._renderListCamera[i];
+        for (i = 0; i < renderActions.length; i++) {
+            renderAction = renderActions[i];
+
+            // layer
+            layerIndex = renderAction.layerIndex;
+            layer = comp.layerList[layerIndex];
+            if (!layer.enabled || !comp.subLayerEnabled[layerIndex]) continue;
+            transparent = comp.subLayerList[layerIndex];
+
+            cameraPass = renderAction.cameraIndex;
             camera = layer.cameras[cameraPass];
 
             // #ifdef DEBUG
+            this.device.pushMarker(camera ? camera.entity.name : "noname");
             this.device.pushMarker(layer.name);
-            this.device.pushMarker(((camera && camera.node) ? camera.node.name : "noname"));
             // #endif
 
             // #ifdef PROFILER
             drawTime = now();
             // #endif
 
-            if (camera) camera.frameBegin(layer.renderTarget);
+            if (camera) camera.frameBegin(renderAction.renderTarget);
 
             // Call prerender callback if there's one
             if (!transparent && layer.onPreRenderOpaque) {
@@ -2897,38 +3058,40 @@ Object.assign(ForwardRenderer.prototype, {
 
             // Called for the first sublayer and for every camera
             if (!(layer._preRenderCalledForCameras & (1 << cameraPass))) {
-                if (layer.onPreRender) layer.onPreRender(cameraPass);
-                layer._preRenderCalledForCameras |= 1 << cameraPass;
-                if (layer.overrideClear) {
-                    this.clearView(camera, layer.renderTarget, layer._clearOptions);
+                if (layer.onPreRender) {
+                    layer.onPreRender(cameraPass);
                 }
+                layer._preRenderCalledForCameras |= 1 << cameraPass;
             }
 
             if (camera) {
-                // Each camera must only clear each render target once
-                rt = layer.renderTarget;
-                processedThisCameraAndRt = false;
-                for (k = 0; k < renderedLength; k++) {
-                    if (renderedRt[k] === rt && renderedByCam[k] === camera) {
-                        processedThisCameraAndRt = true;
-                        break;
-                    }
-                }
 
-                if (!processedThisCameraAndRt) {
-                    // clear once per camera + RT
-                    if (!layer.overrideClear) this.clearView(camera, layer.renderTarget); // TODO: deprecate camera.renderTarget?
-                    renderedRt[renderedLength] = rt;
-                    renderedByCam[renderedLength] = camera;
-                    renderedLength++;
-                }
+                // clear buffers
+                if (renderAction.clearColor || renderAction.clearDepth || renderAction.clearStencil) {
 
-                // Render directional shadows once for each camera (will reject more than 1 attempt in this function)
+                    // TODO: refactor clearView to accept flags from renderAction directly as well
+                    const backupColor = camera.camera._clearColorBuffer;
+                    const backupDepth = camera.camera._clearDepthBuffer;
+                    const backupStencil = camera.camera._clearStencilBuffer;
+
+                    camera.camera._clearColorBuffer = renderAction.clearColor;
+                    camera.camera._clearDepthBuffer = renderAction.clearDepth;
+                    camera.camera._clearStencilBuffer = renderAction.clearStencil;
+
+                    this.clearView(camera.camera, renderAction.renderTarget, true, true);
+
+                    camera.camera._clearColorBuffer = backupColor;
+                    camera.camera._clearDepthBuffer = backupDepth;
+                    camera.camera._clearStencilBuffer = backupStencil;
+                }
 
                 // #ifdef PROFILER
                 draws = this._shadowDrawCalls;
                 // #endif
-                this.renderShadows(layer._sortedLights[LIGHTTYPE_DIRECTIONAL], cameraPass);
+
+                // Render directional shadows once for each camera (will reject more than 1 attempt in this function)
+                this.renderShadows(layer._splitLights[LIGHTTYPE_DIRECTIONAL], cameraPass);
+
                 // #ifdef PROFILER
                 layer._shadowDrawCalls += this._shadowDrawCalls - draws;
                 // #endif
@@ -2937,19 +3100,20 @@ Object.assign(ForwardRenderer.prototype, {
                 sortTime = now();
                 // #endif
 
-                layer._sortVisible(transparent, camera.node, cameraPass);
+                layer._sortVisible(transparent, camera.camera.node, cameraPass);
 
                  // #ifdef PROFILER
                 this._sortTime += now() - sortTime;
                  // #endif
 
+                objects = layer.instances;
                 visible = transparent ? objects.visibleTransparent[cameraPass] : objects.visibleOpaque[cameraPass];
 
                 // Set the not very clever global variable which is only useful when there's just one camera
                 this.scene._activeCamera = camera.camera;
 
                 // Set camera shader constants, viewport, scissor, render target
-                this.setCamera(camera.camera, layer.renderTarget);
+                this.setCamera(camera.camera, renderAction.renderTarget);
 
                 // #ifdef PROFILER
                 draws = this._forwardDrawCalls;
@@ -2957,7 +3121,7 @@ Object.assign(ForwardRenderer.prototype, {
                 this.renderForward(camera.camera,
                                    visible.list,
                                    visible.length,
-                                   layer._sortedLights,
+                                   layer._splitLights,
                                    layer.shaderPass,
                                    layer.cullingMask,
                                    layer.onDrawCall,
@@ -2973,6 +3137,11 @@ Object.assign(ForwardRenderer.prototype, {
                 device.setDepthBias(false);
 
                 camera.frameEnd();
+
+                // trigger postprocessing for camera
+                if (renderAction.triggerPostprocess && camera.onPostprocessing) {
+                    camera.onPostprocessing(camera);
+                }
             }
 
             // Call postrender callback if there's one
@@ -2995,11 +3164,11 @@ Object.assign(ForwardRenderer.prototype, {
             this.device.popMarker();
             // #endif
 
-           // #ifdef PROFILER
+            // #ifdef PROFILER
             layer._renderTime += now() - drawTime;
             // #endif
         }
     }
-});
+}
 
 export { ForwardRenderer };

@@ -6,12 +6,12 @@ import {
     PIXELFORMAT_ETC1, PIXELFORMAT_ETC2_RGB, PIXELFORMAT_ETC2_RGBA,
     PIXELFORMAT_PVRTC_4BPP_RGB_1, PIXELFORMAT_PVRTC_2BPP_RGB_1, PIXELFORMAT_PVRTC_4BPP_RGBA_1, PIXELFORMAT_PVRTC_2BPP_RGBA_1,
     TEXHINT_ASSET
-} from '../../../graphics/graphics.js';
+} from '../../../graphics/constants.js';
 import { Texture } from '../../../graphics/texture.js';
 
 // Defined here: https://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/
-var IDENTIFIER = [0x58544BAB, 0xBB313120, 0x0A1A0A0D]; // «KTX 11»\r\n\x1A\n
-var KNOWN_FORMATS = {
+const IDENTIFIER = [0x58544BAB, 0xBB313120, 0x0A1A0A0D]; // «KTX 11»\r\n\x1A\n
+const KNOWN_FORMATS = {
     0x83F0: PIXELFORMAT_DXT1,
     0x83F2: PIXELFORMAT_DXT3,
     0x83F3: PIXELFORMAT_DXT5,
@@ -26,26 +26,26 @@ var KNOWN_FORMATS = {
 
 /**
  * @class
- * @name pc.KtxParser
- * @implements {pc.TextureParser}
+ * @name KtxParser
+ * @implements {TextureParser}
  * @classdesc Texture parser for ktx files.
  */
-function KtxParser(registry, retryRequests) {
-    this.retryRequests = !!retryRequests;
-}
+class KtxParser {
+    constructor(registry) {
+        this.maxRetries = 0;
+    }
 
-Object.assign(KtxParser.prototype, {
-
-    load: function (url, callback, asset) {
+    load(url, callback, asset) {
         var options = {
             cache: true,
             responseType: "arraybuffer",
-            retry: this.retryRequests
+            retry: this.maxRetries > 0,
+            maxRetries: this.maxRetries
         };
         http.get(url.load, options, callback);
-    },
+    }
 
-    open: function (url, data, device) {
+    open(url, data, device) {
         var textureData = this.parse(data);
 
         if (!textureData) {
@@ -69,9 +69,9 @@ Object.assign(KtxParser.prototype, {
         texture.upload();
 
         return texture;
-    },
+    }
 
-    parse: function (data) {
+    parse(data) {
         var headerU32 = new Uint32Array(data, 0, 16);
 
         if (IDENTIFIER[0] !== headerU32[0] || IDENTIFIER[1] !== headerU32[1] || IDENTIFIER[2] !== headerU32[2]) {
@@ -133,7 +133,7 @@ Object.assign(KtxParser.prototype, {
         for (var mipmapLevel = 0; mipmapLevel < (header.numberOfMipmapLevels || 1); mipmapLevel++) {
             var imageSizeInBytes = new Uint32Array(data.slice(offset, offset + 4))[0];
             offset += 4;
-            // Currently array textures not supported. Keeping this here for referance.
+            // Currently array textures not supported. Keeping this here for reference.
             // for (var arrayElement = 0; arrayElement < (header.numberOfArrayElements || 1); arrayElement++) {
             var faceSizeInBytes = imageSizeInBytes / (header.numberOfFaces || 1);
             // Create array for cubemaps
@@ -142,7 +142,7 @@ Object.assign(KtxParser.prototype, {
                 levels.push([]);
             }
             for (var face = 0; face < header.numberOfFaces; face++) {
-                // Currently more than 1 pixel depth not supported. Keeping this here for referance.
+                // Currently more than 1 pixel depth not supported. Keeping this here for reference.
                 // for (var  zSlice = 0; zSlice < (header.pixelDepth || 1); zSlice++) {
                 var mipData = new Uint8Array(data, offset, faceSizeInBytes);
                 // Handle cubemaps
@@ -167,6 +167,6 @@ Object.assign(KtxParser.prototype, {
             cubemap: isCubeMap
         };
     }
-});
+}
 
 export { KtxParser };

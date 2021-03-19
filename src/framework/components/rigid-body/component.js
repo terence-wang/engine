@@ -17,29 +17,31 @@ var ammoVec1, ammoVec2, ammoQuat, ammoOrigin;
 /**
  * @component
  * @class
- * @name pc.RigidBodyComponent
- * @augments pc.Component
- * @classdesc The rigidbody component, when combined with a {@link pc.CollisionComponent}, allows your
+ * @name RigidBodyComponent
+ * @augments Component
+ * @classdesc The rigidbody component, when combined with a {@link CollisionComponent}, allows your
  * entities to be simulated using realistic physics.
  * A rigidbody component will fall under gravity and collide with other rigid bodies. Using scripts, you
  * can apply forces and impulses to rigid bodies.
  * @description Create a new RigidBodyComponent.
- * @param {pc.RigidBodyComponentSystem} system - The ComponentSystem that created this component.
- * @param {pc.Entity} entity - The entity this component is attached to.
- * @property {number} mass The mass of the body. This is only relevant for {@link pc.BODYTYPE_DYNAMIC}
+ * @param {RigidBodyComponentSystem} system - The ComponentSystem that created this component.
+ * @param {Entity} entity - The entity this component is attached to.
+ * @property {number} mass The mass of the body. This is only relevant for {@link BODYTYPE_DYNAMIC}
  * bodies, other types have infinite mass. Defaults to 1.
- * @property {pc.Vec3} linearVelocity Defines the speed of the body in a given direction.
- * @property {pc.Vec3} angularVelocity Defines the rotational speed of the body around each world axis.
+ * @property {Vec3} linearVelocity Defines the speed of the body in a given direction.
+ * @property {Vec3} angularVelocity Defines the rotational speed of the body around each world axis.
  * @property {number} linearDamping Controls the rate at which a body loses linear velocity over time.
  * Defaults to 0.
  * @property {number} angularDamping Controls the rate at which a body loses angular velocity over time.
  * Defaults to 0.
- * @property {pc.Vec3} linearFactor Scaling factor for linear movement of the body in each axis. Only
- * valid for rigid bodies of type pc.BODYTYPE_DYNAMIC. Defaults to 1 in all axes.
- * @property {pc.Vec3} angularFactor Scaling factor for angular movement of the body in each axis. Only
- * valid for rigid bodies of type pc.BODYTYPE_DYNAMIC. Defaults to 1 in all axes.
+ * @property {Vec3} linearFactor Scaling factor for linear movement of the body in each axis. Only
+ * valid for rigid bodies of type {@link BODYTYPE_DYNAMIC}. Defaults to 1 in all axes.
+ * @property {Vec3} angularFactor Scaling factor for angular movement of the body in each axis. Only
+ * valid for rigid bodies of type {@link BODYTYPE_DYNAMIC}. Defaults to 1 in all axes.
  * @property {number} friction The friction value used when contacts occur between two bodies. A higher
  * value indicates more friction. Should be set in the range 0 to 1. Defaults to 0.5.
+ * @property {number} rollingFriction Sets a torsional friction orthogonal to the contact point. Defaults
+ * to 0.
  * @property {number} restitution Influences the amount of energy lost when two rigid bodies collide. The
  * calculation multiplies the restitution values for both colliding bodies. A multiplied value of 0 means
  * that all energy is lost in the collision while a value of 1 means that no energy is lost. Should be
@@ -50,90 +52,90 @@ var ammoVec1, ammoVec2, ammoQuat, ammoOrigin;
  * of 16 bits, the first 8 bits are reserved for engine use. Defaults to 65535.
  * @property {string} type The rigid body type determines how the body is simulated. Can be:
  *
- * * {@link pc.BODYTYPE_STATIC}: infinite mass and cannot move.
- * * {@link pc.BODYTYPE_DYNAMIC}: simulated according to applied forces.
- * * {@link pc.BODYTYPE_KINEMATIC}: infinite mass and does not respond to forces but can still be moved
+ * * {@link BODYTYPE_STATIC}: infinite mass and cannot move.
+ * * {@link BODYTYPE_DYNAMIC}: simulated according to applied forces.
+ * * {@link BODYTYPE_KINEMATIC}: infinite mass and does not respond to forces but can still be moved
  * by setting their velocity or position.
  *
- * Defaults to pc.BODYTYPE_STATIC.
+ * Defaults to {@link BODYTYPE_STATIC}.
  */
-function RigidBodyComponent(system, entity) {
-    Component.call(this, system, entity);
+class RigidBodyComponent extends Component {
+    constructor(system, entity) {
+        super(system, entity);
 
-    // Lazily create shared variable
-    if (typeof Ammo !== 'undefined' && !ammoTransform) {
-        ammoTransform = new Ammo.btTransform();
-        ammoVec1 = new Ammo.btVector3();
-        ammoVec2 = new Ammo.btVector3();
-        ammoQuat = new Ammo.btQuaternion();
-        ammoOrigin = new Ammo.btVector3(0, 0, 0);
+        // Lazily create shared variable
+        if (typeof Ammo !== 'undefined' && !ammoTransform) {
+            ammoTransform = new Ammo.btTransform();
+            ammoVec1 = new Ammo.btVector3();
+            ammoVec2 = new Ammo.btVector3();
+            ammoQuat = new Ammo.btQuaternion();
+            ammoOrigin = new Ammo.btVector3(0, 0, 0);
+        }
+
+        this.on('set_mass', this.onSetMass, this);
+        this.on('set_linearDamping', this.onSetLinearDamping, this);
+        this.on('set_angularDamping', this.onSetAngularDamping, this);
+        this.on('set_linearFactor', this.onSetLinearFactor, this);
+        this.on('set_angularFactor', this.onSetAngularFactor, this);
+        this.on('set_friction', this.onSetFriction, this);
+        this.on('set_rollingFriction', this.onSetRollingFriction, this);
+        this.on('set_restitution', this.onSetRestitution, this);
+        this.on('set_type', this.onSetType, this);
+        this.on('set_group', this.onSetGroupOrMask, this);
+        this.on('set_mask', this.onSetGroupOrMask, this);
+
+        this.on('set_body', this.onSetBody, this);
+
+        this._linearVelocity = new Vec3(0, 0, 0);
+        this._angularVelocity = new Vec3(0, 0, 0);
     }
 
-    this.on('set_mass', this.onSetMass, this);
-    this.on('set_linearDamping', this.onSetLinearDamping, this);
-    this.on('set_angularDamping', this.onSetAngularDamping, this);
-    this.on('set_linearFactor', this.onSetLinearFactor, this);
-    this.on('set_angularFactor', this.onSetAngularFactor, this);
-    this.on('set_friction', this.onSetFriction, this);
-    this.on('set_restitution', this.onSetRestitution, this);
-    this.on('set_type', this.onSetType, this);
-    this.on('set_group', this.onSetGroupOrMask, this);
-    this.on('set_mask', this.onSetGroupOrMask, this);
+    // Events Documentation
+    /**
+     * @event
+     * @name RigidBodyComponent#contact
+     * @description The 'contact' event is fired when a contact occurs between two rigid bodies.
+     * @param {ContactResult} result - Details of the contact between the two rigid bodies.
+     */
 
-    this.on('set_body', this.onSetBody, this);
+    /**
+     * @event
+     * @name RigidBodyComponent#collisionstart
+     * @description The 'collisionstart' event is fired when two rigid bodies start touching.
+     * @param {ContactResult} result - Details of the contact between the two rigid bodies.
+     */
 
-    this._linearVelocity = new Vec3(0, 0, 0);
-    this._angularVelocity = new Vec3(0, 0, 0);
-}
-RigidBodyComponent.prototype = Object.create(Component.prototype);
-RigidBodyComponent.prototype.constructor = RigidBodyComponent;
+    /**
+     * @event
+     * @name RigidBodyComponent#collisionend
+     * @description The 'collisionend' event is fired two rigid-bodies stop touching.
+     * @param {Entity} other - The {@link Entity} that stopped touching this rigid body.
+     */
 
-// Events Documentation
-/**
- * @event
- * @name pc.RigidBodyComponent#contact
- * @description The 'contact' event is fired when a contact occurs between two rigid bodies.
- * @param {pc.ContactResult} result - Details of the contact between the two rigid bodies.
- */
+    /**
+     * @event
+     * @name RigidBodyComponent#triggerenter
+     * @description The 'triggerenter' event is fired when a rigid body enters a trigger volume.
+     * @param {Entity} other - The {@link Entity} with trigger volume that this rigidbody entered.
+     */
 
-/**
- * @event
- * @name pc.RigidBodyComponent#collisionstart
- * @description The 'collisionstart' event is fired when two rigid bodies start touching.
- * @param {pc.ContactResult} result - Details of the contact between the two rigid bodies.
- */
+    /**
+     * @event
+     * @name RigidBodyComponent#triggerleave
+     * @description The 'triggerleave' event is fired when a rigid body exits a trigger volume.
+     * @param {Entity} other - The {@link Entity} with trigger volume that this rigidbody exited.
+     */
 
-/**
- * @event
- * @name pc.RigidBodyComponent#collisionend
- * @description The 'collisionend' event is fired two rigid-bodies stop touching.
- * @param {pc.Entity} other - The {@link pc.Entity} that stopped touching this rigid body.
- */
-
-/**
- * @event
- * @name pc.RigidBodyComponent#triggerenter
- * @description The 'triggerenter' event is fired when a rigid body enters a trigger volume.
- * @param {pc.Entity} other - The {@link pc.Entity} with trigger volume that this rigidbody entered.
- */
-
-/**
- * @event
- * @name pc.RigidBodyComponent#triggerleave
- * @description The 'triggerleave' event is fired when a rigid body exits a trigger volume.
- * @param {pc.Entity} other - The {@link pc.Entity} with trigger volume that this rigidbody exited.
- */
-
-Object.defineProperty(RigidBodyComponent.prototype, "linearVelocity", {
-    get: function () {
+    get linearVelocity() {
         var body = this.body;
         if (body && this.type === BODYTYPE_DYNAMIC) {
             var vel = body.getLinearVelocity();
             this._linearVelocity.set(vel.x(), vel.y(), vel.z());
         }
         return this._linearVelocity;
-    },
-    set: function (lv) {
+    }
+
+    set linearVelocity(lv) {
         var body = this.body;
         if (body && this.type === BODYTYPE_DYNAMIC) {
             body.activate();
@@ -144,18 +146,17 @@ Object.defineProperty(RigidBodyComponent.prototype, "linearVelocity", {
             this._linearVelocity.copy(lv);
         }
     }
-});
 
-Object.defineProperty(RigidBodyComponent.prototype, "angularVelocity", {
-    get: function () {
+    get angularVelocity() {
         var body = this.body;
         if (body && this.type === BODYTYPE_DYNAMIC) {
             var vel = body.getAngularVelocity();
             this._angularVelocity.set(vel.x(), vel.y(), vel.z());
         }
         return this._angularVelocity;
-    },
-    set: function (av) {
+    }
+
+    set angularVelocity(av) {
         var body = this.body;
         if (body && this.type === BODYTYPE_DYNAMIC) {
             body.activate();
@@ -166,16 +167,14 @@ Object.defineProperty(RigidBodyComponent.prototype, "angularVelocity", {
             this._angularVelocity.copy(av);
         }
     }
-});
 
-Object.assign(RigidBodyComponent.prototype, {
     /**
      * @private
      * @function
-     * @name pc.RigidBodyComponent#createBody
+     * @name RigidBodyComponent#createBody
      * @description If the Entity has a Collision shape attached then create a rigid body using this shape. This method destroys the existing body.
      */
-    createBody: function () {
+    createBody() {
         var entity = this.entity;
         var shape;
 
@@ -202,6 +201,7 @@ Object.assign(RigidBodyComponent.prototype, {
 
             body.setRestitution(this.restitution);
             body.setFriction(this.friction);
+            body.setRollingFriction(this.rollingFriction);
             body.setDamping(this.linearDamping, this.angularDamping);
 
             if (this.type === BODYTYPE_DYNAMIC) {
@@ -225,33 +225,33 @@ Object.assign(RigidBodyComponent.prototype, {
                 this.enableSimulation();
             }
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#isActive
+     * @name RigidBodyComponent#isActive
      * @description Returns true if the rigid body is currently actively being simulated. I.e. Not 'sleeping'.
      * @returns {boolean} True if the body is active.
      */
-    isActive: function () {
+    isActive() {
         var body = this.body;
         return body ? body.isActive() : false;
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#activate
+     * @name RigidBodyComponent#activate
      * @description Forcibly activate the rigid body simulation. Only affects rigid bodies of
-     * type pc.BODYTYPE_DYNAMIC.
+     * type {@link BODYTYPE_DYNAMIC}.
      */
-    activate: function () {
+    activate() {
         var body = this.body;
         if (body) {
             body.activate();
         }
-    },
+    }
 
-    enableSimulation: function () {
+    enableSimulation() {
         if (this.entity.collision && this.entity.collision.enabled && !this.data.simulationEnabled) {
             var body = this.body;
             if (body) {
@@ -282,9 +282,9 @@ Object.assign(RigidBodyComponent.prototype, {
                 this.data.simulationEnabled = true;
             }
         }
-    },
+    }
 
-    disableSimulation: function () {
+    disableSimulation() {
         var body = this.body;
         if (body && this.data.simulationEnabled) {
             var idx;
@@ -312,18 +312,18 @@ Object.assign(RigidBodyComponent.prototype, {
 
             this.data.simulationEnabled = false;
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#applyForce
+     * @name RigidBodyComponent#applyForce
      * @description Apply an force to the body at a point. By default, the force is applied at the origin of the
      * body. However, the force can be applied at an offset this point by specifying a world space vector from
      * the body's origin to the point of application. This function has two valid signatures. You can either
      * specify the force (and optional relative point) via 3D-vector or numbers.
-     * @param {pc.Vec3|number} x - A 3-dimensional vector representing the force in world-space or
+     * @param {Vec3|number} x - A 3-dimensional vector representing the force in world-space or
      * the x-component of the force in world-space.
-     * @param {pc.Vec3|number} [y] - An optional 3-dimensional vector representing the relative point at
+     * @param {Vec3|number} [y] - An optional 3-dimensional vector representing the relative point at
      * which to apply the impulse in world-space or the y-component of the force in world-space.
      * @param {number} [z] - The z-component of the force in world-space.
      * @param {number} [px] - The x-component of a world-space offset from the body's position where the force is applied.
@@ -355,7 +355,7 @@ Object.assign(RigidBodyComponent.prototype, {
      * // Apply the force
      * this.entity.rigidbody.applyForce(force, relativePos);
      */
-    applyForce: function () {
+    applyForce() {
         var x, y, z;
         var px, py, pz;
         switch (arguments.length) {
@@ -398,14 +398,14 @@ Object.assign(RigidBodyComponent.prototype, {
             }
 
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#applyTorque
+     * @name RigidBodyComponent#applyTorque
      * @description Apply torque (rotational force) to the body. This function has two valid signatures.
      * You can either specify the torque force with a 3D-vector or with 3 numbers.
-     * @param {pc.Vec3|number} x - A 3-dimensional vector representing the torque force in world-space or
+     * @param {Vec3|number} x - A 3-dimensional vector representing the torque force in world-space or
      * the x-component of the torque force in world-space.
      * @param {number} [y] - The y-component of the torque force in world-space.
      * @param {number} [z] - The z-component of the torque force in world-space.
@@ -417,7 +417,7 @@ Object.assign(RigidBodyComponent.prototype, {
      * // Apply via numbers
      * entity.rigidbody.applyTorque(0, 10, 0);
      */
-    applyTorque: function () {
+    applyTorque() {
         var x, y, z;
         switch (arguments.length) {
             case 1:
@@ -442,17 +442,17 @@ Object.assign(RigidBodyComponent.prototype, {
             ammoVec1.setValue(x, y, z);
             body.applyTorque(ammoVec1);
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#applyImpulse
+     * @name RigidBodyComponent#applyImpulse
      * @description Apply an impulse (instantaneous change of velocity) to the body at a point.
      * This function has two valid signatures. You can either specify the impulse (and optional relative
      * point) via 3D-vector or numbers.
-     * @param {pc.Vec3|number} x - A 3-dimensional vector representing the impulse in world-space or
+     * @param {Vec3|number} x - A 3-dimensional vector representing the impulse in world-space or
      * the x-component of the impulse in world-space.
-     * @param {pc.Vec3|number} [y] - An optional 3-dimensional vector representing the relative point at
+     * @param {Vec3|number} [y] - An optional 3-dimensional vector representing the relative point at
      * which to apply the impulse in the local-space of the entity or the y-component of the impulse to
      * apply in world-space.
      * @param {number} [z] - The z-component of the impulse to apply in world-space.
@@ -477,7 +477,7 @@ Object.assign(RigidBodyComponent.prototype, {
      * // z-axis of the entity's local-space.
      * entity.rigidbody.applyImpulse(0, 10, 0, 0, 0, 1);
      */
-    applyImpulse: function () {
+    applyImpulse() {
         var x, y, z;
         var px, py, pz;
         switch (arguments.length) {
@@ -524,15 +524,15 @@ Object.assign(RigidBodyComponent.prototype, {
                 body.applyImpulse(ammoVec1, ammoOrigin);
             }
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#applyTorqueImpulse
+     * @name RigidBodyComponent#applyTorqueImpulse
      * @description Apply a torque impulse (rotational force applied instantaneously) to the body.
      * This function has two valid signatures. You can either specify the torque force with a 3D-vector
      * or with 3 numbers.
-     * @param {pc.Vec3|number} x - A 3-dimensional vector representing the torque impulse in world-space or
+     * @param {Vec3|number} x - A 3-dimensional vector representing the torque impulse in world-space or
      * the x-component of the torque impulse in world-space.
      * @param {number} [y] - The y-component of the torque impulse in world-space.
      * @param {number} [z] - The z-component of the torque impulse in world-space.
@@ -544,7 +544,7 @@ Object.assign(RigidBodyComponent.prototype, {
      * // Apply via numbers
      * entity.rigidbody.applyTorqueImpulse(0, 10, 0);
      */
-    applyTorqueImpulse: function () {
+    applyTorqueImpulse() {
         var x, y, z;
         switch (arguments.length) {
             case 1:
@@ -569,46 +569,46 @@ Object.assign(RigidBodyComponent.prototype, {
             ammoVec1.setValue(x, y, z);
             body.applyTorqueImpulse(ammoVec1);
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#isStatic
-     * @description Returns true if the rigid body is of type {@link pc.BODYTYPE_STATIC}.
+     * @name RigidBodyComponent#isStatic
+     * @description Returns true if the rigid body is of type {@link BODYTYPE_STATIC}.
      * @returns {boolean} True if static.
      */
-    isStatic: function () {
+    isStatic() {
         return (this.type === BODYTYPE_STATIC);
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#isStaticOrKinematic
-     * @description Returns true if the rigid body is of type {@link pc.BODYTYPE_STATIC} or {@link pc.BODYTYPE_KINEMATIC}.
+     * @name RigidBodyComponent#isStaticOrKinematic
+     * @description Returns true if the rigid body is of type {@link BODYTYPE_STATIC} or {@link BODYTYPE_KINEMATIC}.
      * @returns {boolean} True if static or kinematic.
      */
-    isStaticOrKinematic: function () {
+    isStaticOrKinematic() {
         return (this.type === BODYTYPE_STATIC || this.type === BODYTYPE_KINEMATIC);
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#isKinematic
-     * @description Returns true if the rigid body is of type {@link pc.BODYTYPE_KINEMATIC}.
+     * @name RigidBodyComponent#isKinematic
+     * @description Returns true if the rigid body is of type {@link BODYTYPE_KINEMATIC}.
      * @returns {boolean} True if kinematic.
      */
-    isKinematic: function () {
+    isKinematic() {
         return (this.type === BODYTYPE_KINEMATIC);
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.RigidBodyComponent#_getEntityTransform
+     * @name RigidBodyComponent#_getEntityTransform
      * @description Writes an entity transform into an Ammo.btTransform but ignoring scale.
      * @param {object} transform - The ammo transform to write the entity transform to.
      */
-    _getEntityTransform: function (transform) {
+    _getEntityTransform(transform) {
         var pos = this.entity.getPosition();
         var rot = this.entity.getRotation();
 
@@ -617,17 +617,17 @@ Object.assign(RigidBodyComponent.prototype, {
 
         transform.setOrigin(ammoVec1);
         transform.setRotation(ammoQuat);
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.RigidBodyComponent#syncEntityToBody
+     * @name RigidBodyComponent#syncEntityToBody
      * @description Set the rigid body transform to be the same as the Entity transform.
-     * This must be called after any Entity transformation functions (e.g. {@link pc.Entity#setPosition}) are called
+     * This must be called after any Entity transformation functions (e.g. {@link Entity#setPosition}) are called
      * in order to update the rigid body to match the Entity.
      */
-    syncEntityToBody: function () {
+    syncEntityToBody() {
         var body = this.data.body;
         if (body) {
             this._getEntityTransform(ammoTransform);
@@ -642,16 +642,16 @@ Object.assign(RigidBodyComponent.prototype, {
             }
             body.activate();
         }
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.RigidBodyComponent#_updateDynamic
+     * @name RigidBodyComponent#_updateDynamic
      * @description Sets an entity's transform to match that of the world transformation
      * matrix of a dynamic rigid body's motion state.
      */
-    _updateDynamic: function () {
+    _updateDynamic() {
         var body = this.data.body;
 
         // If a dynamic body is frozen, we can assume its motion state transform is
@@ -669,34 +669,34 @@ Object.assign(RigidBodyComponent.prototype, {
                 this.entity.setRotation(q.x(), q.y(), q.z(), q.w());
             }
         }
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.RigidBodyComponent#_updateKinematic
+     * @name RigidBodyComponent#_updateKinematic
      * @description Writes the entity's world transformation matrix into the motion state
      * of a kinematic body.
      */
-    _updateKinematic: function () {
+    _updateKinematic() {
         var body = this.data.body;
         var motionState = body.getMotionState();
         if (motionState) {
             this._getEntityTransform(ammoTransform);
             motionState.setWorldTransform(ammoTransform);
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.RigidBodyComponent#teleport
+     * @name RigidBodyComponent#teleport
      * @description Teleport an entity to a new world-space position, optionally setting orientation. This function
      * should only be called for rigid bodies that are dynamic. This function has three valid signatures.
      * The first takes a 3-dimensional vector for the position and an optional 3-dimensional vector for Euler rotation.
      * The second takes a 3-dimensional vector for the position and an optional quaternion for rotation.
      * The third takes 3 numbers for the position and an optional 3 numbers for Euler rotation.
-     * @param {pc.Vec3|number} x - A 3-dimensional vector holding the new position or the new position x-coordinate.
-     * @param {pc.Vec3|pc.Quat|number} y - A 3-dimensional vector or quaternion holding the new rotation or the new
+     * @param {Vec3|number} x - A 3-dimensional vector holding the new position or the new position x-coordinate.
+     * @param {Vec3|Quat|number} y - A 3-dimensional vector or quaternion holding the new rotation or the new
      * position y-coordinate.
      * @param {number} [z] - The new position z-coordinate.
      * @param {number} [rx] - The new Euler x-angle value.
@@ -716,7 +716,7 @@ Object.assign(RigidBodyComponent.prototype, {
      * // Teleport the entity to world-space coordinate [1, 2, 3] and reset orientation
      * entity.rigidbody.teleport(1, 2, 3, 0, 0, 0);
      */
-    teleport: function () {
+    teleport() {
         if (arguments.length < 3) {
             if (arguments[0]) {
                 this.entity.setPosition(arguments[0]);
@@ -736,21 +736,21 @@ Object.assign(RigidBodyComponent.prototype, {
             this.entity.setPosition(arguments[0], arguments[1], arguments[2]);
         }
         this.syncEntityToBody();
-    },
+    }
 
-    onEnable: function () {
+    onEnable() {
         if (!this.body) {
             this.createBody();
         }
 
         this.enableSimulation();
-    },
+    }
 
-    onDisable: function () {
+    onDisable() {
         this.disableSimulation();
-    },
+    }
 
-    onSetMass: function (name, oldValue, newValue) {
+    onSetMass(name, oldValue, newValue) {
         var body = this.data.body;
         if (body && this.type === BODYTYPE_DYNAMIC) {
             var enabled = this.enabled && this.entity.enabled;
@@ -768,53 +768,60 @@ Object.assign(RigidBodyComponent.prototype, {
                 this.enableSimulation();
             }
         }
-    },
+    }
 
-    onSetLinearDamping: function (name, oldValue, newValue) {
+    onSetLinearDamping(name, oldValue, newValue) {
         var body = this.data.body;
         if (body) {
             body.setDamping(newValue, this.data.angularDamping);
         }
-    },
+    }
 
-    onSetAngularDamping: function (name, oldValue, newValue) {
+    onSetAngularDamping(name, oldValue, newValue) {
         var body = this.data.body;
         if (body) {
             body.setDamping(this.data.linearDamping, newValue);
         }
-    },
+    }
 
-    onSetLinearFactor: function (name, oldValue, newValue) {
+    onSetLinearFactor(name, oldValue, newValue) {
         var body = this.data.body;
         if (body && this.type === BODYTYPE_DYNAMIC) {
             ammoVec1.setValue(newValue.x, newValue.y, newValue.z);
             body.setLinearFactor(ammoVec1);
         }
-    },
+    }
 
-    onSetAngularFactor: function (name, oldValue, newValue) {
+    onSetAngularFactor(name, oldValue, newValue) {
         var body = this.data.body;
         if (body && this.type === BODYTYPE_DYNAMIC) {
             ammoVec1.setValue(newValue.x, newValue.y, newValue.z);
             body.setAngularFactor(ammoVec1);
         }
-    },
+    }
 
-    onSetFriction: function (name, oldValue, newValue) {
+    onSetFriction(name, oldValue, newValue) {
         var body = this.data.body;
         if (body) {
             body.setFriction(newValue);
         }
-    },
+    }
 
-    onSetRestitution: function (name, oldValue, newValue) {
+    onSetRollingFriction(name, oldValue, newValue) {
+        var body = this.data.body;
+        if (body) {
+            body.setRollingFriction(newValue);
+        }
+    }
+
+    onSetRestitution(name, oldValue, newValue) {
         var body = this.data.body;
         if (body) {
             body.setRestitution(newValue);
         }
-    },
+    }
 
-    onSetType: function (name, oldValue, newValue) {
+    onSetType(name, oldValue, newValue) {
         if (newValue !== oldValue) {
             this.disableSimulation();
 
@@ -833,9 +840,9 @@ Object.assign(RigidBodyComponent.prototype, {
             // Create a new body
             this.createBody();
         }
-    },
+    }
 
-    onSetGroupOrMask: function (name, oldValue, newValue) {
+    onSetGroupOrMask(name, oldValue, newValue) {
         if (newValue !== oldValue) {
             // re-enabling simulation adds rigidbody back into world with new masks
             var isEnabled = this.enabled && this.entity.enabled;
@@ -844,13 +851,13 @@ Object.assign(RigidBodyComponent.prototype, {
                 this.enableSimulation();
             }
         }
-    },
+    }
 
-    onSetBody: function (name, oldValue, newValue) {
+    onSetBody(name, oldValue, newValue) {
         if (this.body && this.data.simulationEnabled) {
             this.body.activate();
         }
     }
-});
+}
 
 export { RigidBodyComponent };

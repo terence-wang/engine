@@ -1,15 +1,15 @@
-import { Color } from '../../core/color.js';
+import { Color } from '../../math/color.js';
 
 import { Material } from './material.js';
 
 /**
  * @class
- * @name pc.BasicMaterial
- * @augments pc.Material
+ * @name BasicMaterial
+ * @augments Material
  * @classdesc A Basic material is for rendering unlit geometry, either using a constant color or a
  * color map modulated with a color.
- * @property {pc.Color} color The flat color of the material (RGBA, where each component is 0 to 1).
- * @property {pc.Texture|null} colorMap The color map of the material (default is null). If specified, the color map is
+ * @property {Color} color The flat color of the material (RGBA, where each component is 0 to 1).
+ * @property {Texture|null} colorMap The color map of the material (default is null). If specified, the color map is
  * modulated by the color property.
  * @example
  * // Create a new Basic material
@@ -22,27 +22,25 @@ import { Material } from './material.js';
  * // Notify the material that it has been modified
  * material.update();
  */
-function BasicMaterial() {
-    Material.call(this);
+class BasicMaterial extends Material {
+    constructor() {
+        super();
 
-    this.color = new Color(1, 1, 1, 1);
-    this.colorUniform = new Float32Array(4);
+        this.color = new Color(1, 1, 1, 1);
+        this.colorUniform = new Float32Array(4);
 
-    this.colorMap = null;
-    this.vertexColors = false;
-}
-BasicMaterial.prototype = Object.create(Material.prototype);
-BasicMaterial.prototype.constructor = BasicMaterial;
+        this.colorMap = null;
+        this.vertexColors = false;
+    }
 
-Object.assign(BasicMaterial.prototype, {
     /**
      * @function
-     * @name pc.BasicMaterial#clone
+     * @name BasicMaterial#clone
      * @description Duplicates a Basic material. All properties are duplicated except textures
      * where only the references are copied.
-     * @returns {pc.BasicMaterial} A cloned Basic material.
+     * @returns {BasicMaterial} A cloned Basic material.
      */
-    clone: function () {
+    clone() {
         var clone = new BasicMaterial();
 
         Material.prototype._cloneInternal.call(this, clone);
@@ -52,9 +50,9 @@ Object.assign(BasicMaterial.prototype, {
         clone.vertexColors = this.vertexColors;
 
         return clone;
-    },
+    }
 
-    updateUniforms: function () {
+    updateUniforms() {
         this.clearParameters();
 
         this.colorUniform[0] = this.color.r;
@@ -65,9 +63,9 @@ Object.assign(BasicMaterial.prototype, {
         if (this.colorMap) {
             this.setParameter('texture_diffuseMap', this.colorMap);
         }
-    },
+    }
 
-    updateShader: function (device, scene, objDefs, staticLightList, pass, sortedLights) {
+    updateShader(device, scene, objDefs, staticLightList, pass, sortedLights) {
         var options = {
             skin: !!this.meshInstances[0].skinInstance,
             vertexColors: this.vertexColors,
@@ -77,6 +75,6 @@ Object.assign(BasicMaterial.prototype, {
         var library = device.getProgramLibrary();
         this.shader = library.getProgram('basic', options);
     }
-});
+}
 
 export { BasicMaterial };

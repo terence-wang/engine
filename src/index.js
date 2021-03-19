@@ -1,5 +1,6 @@
 // POLYFILLS
 import './polyfill/array-find.js';
+import './polyfill/array-find-index.js';
 import './polyfill/math-log2.js';
 import './polyfill/math-sign.js';
 import './polyfill/object-assign.js';
@@ -16,9 +17,9 @@ export { guid } from './core/guid.js';
 export { path } from './core/path.js';
 export { platform } from './core/platform.js';
 export { string } from './core/string.js';
-export { Color } from './core/color.js';
 export { EventHandler } from './core/event-handler.js';
 export { IndexedList } from './core/indexed-list.js';
+export { SortedLoopArray } from './core/sorted-loop-array.js';
 export { Tags } from './core/tags.js';
 export { Timer, now } from './core/time.js';
 export { URI, createURI } from './core/uri.js';
@@ -29,6 +30,7 @@ export { http, Http } from './net/http.js';
 // MATH
 export * from './math/constants.js';
 export { math } from './math/math.js';
+export { Color } from './math/color.js';
 export { Curve } from './math/curve.js';
 export { CurveSet } from './math/curve-set.js';
 export { Mat3 } from './math/mat3.js';
@@ -47,13 +49,13 @@ export { Plane } from './shape/plane.js';
 export { Ray } from './shape/ray.js';
 
 // GRAPHICS
-export * from './graphics/graphics.js';
+export * from './graphics/constants.js';
 export { drawQuadWithShader, drawTexture } from './graphics/simple-post-effect.js';
 export { prefilterCubemap, shFromCubemap } from './graphics/prefilter-cubemap.js';
 export { reprojectTexture } from './graphics/reproject-texture.js';
 export { programlib } from './graphics/program-lib/program-lib.js';
 export { shaderChunks } from './graphics/program-lib/chunks/chunks.js';
-export { GraphicsDevice } from './graphics/device.js';
+export { GraphicsDevice } from './graphics/graphics-device.js';
 export { IndexBuffer } from './graphics/index-buffer.js';
 export { PostEffect, drawFullscreenQuad } from './graphics/post-effect.js';
 export { ProgramLibrary } from './graphics/program-library.js';
@@ -71,7 +73,10 @@ export { VertexIterator } from './graphics/vertex-iterator.js';
 export * from './scene/constants.js';
 export { calculateNormals, calculateTangents, createBox, createCapsule, createCone, createCylinder, createMesh, createPlane, createSphere, createTorus } from './scene/procedural.js';
 export { BasicMaterial } from './scene/materials/basic-material.js';
-export { Batch, BatchGroup, BatchManager } from './scene/batching.js';
+export { Batch } from './scene/batching/batch.js';
+export { BatchGroup } from './scene/batching/batch-group.js';
+export { SkinBatchInstance } from './scene/batching/skin-batch-instance.js';
+export { BatchManager } from './scene/batching/batch-manager.js';
 export { Camera } from './scene/camera.js';
 export { DepthMaterial } from './scene/materials/depth-material.js';
 export { ForwardRenderer } from './scene/forward-renderer.js';
@@ -88,19 +93,38 @@ export { Morph } from './scene/morph.js';
 export { MorphInstance } from './scene/morph-instance.js';
 export { MorphTarget } from './scene/morph-target.js';
 export { ParticleEmitter } from './scene/particle-system/particle-emitter.js';
-export { Picker } from './scene/pick.js';
+export { Picker } from './scene/picker.js';
 export { Scene } from './scene/scene.js';
-export { Skin, SkinInstance } from './scene/skin.js';
+export { Skin } from './scene/skin.js';
+export { SkinInstance } from './scene/skin-instance.js';
 export { Sprite } from './scene/sprite.js';
 export { StandardMaterial } from './scene/materials/standard-material.js';
 export { StencilParameters } from './scene/stencil-parameters.js';
 export { TextureAtlas } from './scene/texture-atlas.js';
 
 // ANIMATION
+export { Animation, Key, Node } from './animation/animation.js';
+export { Skeleton } from './animation/skeleton.js';
+
+// ANIM
 export * from './anim/constants.js';
-export { Animation, Key, Node } from './anim/animation.js';
-export { Skeleton } from './anim/skeleton.js';
-export { AnimBinder, AnimClip, AnimCurve, AnimData, AnimEvaluator, AnimSnapshot, AnimTarget, AnimTrack, DefaultAnimBinder } from './anim/anim.js';
+export { AnimBinder } from './anim/binder/anim-binder.js';
+export { AnimClip } from './anim/evaluator/anim-clip.js';
+export { AnimCurve } from './anim/evaluator/anim-curve.js';
+export { AnimData } from './anim/evaluator/anim-data.js';
+export { AnimEvaluator } from './anim/evaluator/anim-evaluator.js';
+export { AnimSnapshot } from './anim/evaluator/anim-snapshot.js';
+export { AnimTarget } from './anim/evaluator/anim-target.js';
+export { AnimTrack } from './anim/evaluator/anim-track.js';
+export { DefaultAnimBinder } from './anim/binder/default-anim-binder.js';
+export * from './anim/controller/constants.js';
+export { AnimController } from './anim/controller/anim-controller.js';
+export { AnimStateGraph } from './anim/state-graph/anim-state-graph.js';
+
+// FONT
+export * from './font/constants.js';
+export { Font } from './font/font.js';
+export { CanvasFont } from './font/canvas-font.js';
 
 // SOUND
 export * from './audio/constants.js';
@@ -115,7 +139,7 @@ export { Bundle } from './bundles/bundle.js';
 export { BundleRegistry } from './bundles/bundle-registry.js';
 
 // RESOURCES
-export { basisDownload, basisDownloadFromConfig, basisInitialize, basisTargetFormat, basisTranscode } from './resources/basis.js';
+export { basisDownload, basisSetDownloadConfig, basisDownloadFromConfig, basisInitialize, basisTargetFormat, basisTranscode } from './resources/basis.js';
 export { AnimClipHandler } from './resources/anim-clip.js';
 export { AnimStateGraphHandler } from './resources/anim-state-graph.js';
 export { AnimationHandler } from './resources/animation.js';
@@ -137,6 +161,7 @@ export { KtxParser } from './resources/parser/texture/ktx.js';
 export { LegacyDdsParser } from './resources/parser/texture/legacy-dds.js';
 export { MaterialHandler } from './resources/material.js';
 export { ModelHandler } from './resources/model.js';
+export { RenderHandler } from './resources/render.js';
 export { ResourceHandler } from './resources/handler.js';
 export { ResourceLoader } from './resources/loader.js';
 export { ScriptHandler } from './resources/script.js';
@@ -171,9 +196,12 @@ export * from './input/constants.js';
 export { Controller } from './input/controller.js';
 export { ElementInput, ElementInputEvent, ElementMouseEvent, ElementSelectEvent, ElementTouchEvent } from './input/element-input.js';
 export { GamePads } from './input/game-pads.js';
-export { Keyboard, KeyboardEvent } from './input/keyboard.js';
-export { Mouse, MouseEvent } from './input/mouse.js';
-export { getTouchTargetCoords, Touch, TouchDevice, TouchEvent } from './input/touch.js';
+export { Keyboard } from './input/keyboard.js';
+export { KeyboardEvent } from './input/keyboard-event.js';
+export { Mouse } from './input/mouse.js';
+export { MouseEvent } from './input/mouse-event.js';
+export { TouchDevice } from './input/touch-device.js';
+export { getTouchTargetCoords, Touch, TouchEvent } from './input/touch-event.js';
 
 // FRAMEWORK
 export * from './framework/constants.js';
@@ -181,13 +209,10 @@ export { script } from './framework/script.js';
 export { app, Application } from './framework/application.js';
 export { AnimationComponent } from './framework/components/animation/component.js';
 export { AnimationComponentSystem } from './framework/components/animation/system.js';
-export * from './framework/components/anim/constants.js';
+export * from './anim/controller/constants.js';
 export { AnimComponent } from './framework/components/anim/component.js';
-export { AnimComponentLayer } from './framework/components/anim/layer.js';
+export { AnimComponentLayer } from './framework/components/anim/component-layer.js';
 export { AnimComponentSystem } from './framework/components/anim/system.js';
-export { AnimController } from './framework/components/anim/controller.js';
-export { AnimPropertyLocator } from './framework/components/anim/property-locator.js';
-export { AnimStateGraph } from './framework/components/anim/state-graph.js';
 export { AudioListenerComponent } from './framework/components/audio-listener/component.js';
 export { AudioListenerComponentSystem } from './framework/components/audio-listener/system.js';
 export { AudioSourceComponent } from './framework/components/audio-source/component.js';
@@ -197,7 +222,6 @@ export { ButtonComponent } from './framework/components/button/component.js';
 export { ButtonComponentSystem } from './framework/components/button/system.js';
 export { CameraComponent } from './framework/components/camera/component.js';
 export { CameraComponentSystem } from './framework/components/camera/system.js';
-export { CanvasFont } from './framework/components/text/canvas-font.js';
 export { CollisionComponent } from './framework/components/collision/component.js';
 export { CollisionComponentSystem } from './framework/components/collision/system.js';
 export { Component } from './framework/components/component.js';
@@ -210,7 +234,6 @@ export { ElementComponentSystem } from './framework/components/element/system.js
 export { ElementDragHelper } from './framework/components/element/element-drag-helper.js';
 export { Entity } from './framework/entity.js';
 export { EntityReference } from './framework/utils/entity-reference.js';
-export { Font, FONT_BITMAP, FONT_MSDF } from './framework/components/text/font.js';
 export { ImageElement } from './framework/components/element/image-element.js';
 export { LayoutCalculator } from './framework/components/layout-group/layout-calculator.js';
 export { LayoutChildComponent } from './framework/components/layout-child/component.js';
@@ -224,12 +247,12 @@ export { ModelComponent } from './framework/components/model/component.js';
 export { ModelComponentSystem } from './framework/components/model/system.js';
 export { ParticleSystemComponent } from './framework/components/particle-system/component.js';
 export { ParticleSystemComponentSystem } from './framework/components/particle-system/system.js';
-export { PostEffectPass } from './framework/components/camera/post-effect-pass.js';
 export { PostEffectQueue } from './framework/components/camera/post-effect-queue.js';
 export * from './framework/components/rigid-body/constants.js';
 export { RigidBodyComponent } from './framework/components/rigid-body/component.js';
 export { RigidBodyComponentSystem, ContactPoint, ContactResult, RaycastResult, SingleContactResult } from './framework/components/rigid-body/system.js';
-export { SceneRegistry, SceneRegistryItem } from './framework/scene-registry.js';
+export { SceneRegistry } from './framework/scene-registry.js';
+export { SceneRegistryItem } from './framework/scene-registry-item.js';
 export * from './framework/components/screen/constants.js';
 export { ScreenComponent } from './framework/components/screen/component.js';
 export { ScreenComponentSystem } from './framework/components/screen/system.js';
@@ -242,7 +265,6 @@ export { ScrollbarComponentSystem } from './framework/components/scrollbar/syste
 export * from './framework/components/scroll-view/constants.js';
 export { ScrollViewComponent } from './framework/components/scroll-view/component.js';
 export { ScrollViewComponentSystem } from './framework/components/scroll-view/system.js';
-export { SortedLoopArray } from './framework/utils/sorted-loop-array.js';
 export { SoundSlot } from './framework/components/sound/slot.js';
 export { SoundComponent } from './framework/components/sound/component.js';
 export { SoundComponentSystem } from './framework/components/sound/system.js';
@@ -267,9 +289,13 @@ export * from './xr/constants.js';
 export { XrInput } from './xr/xr-input.js';
 export { XrInputSource } from './xr/xr-input-source.js';
 export { XrLightEstimation } from './xr/xr-light-estimation.js';
+export { XrDepthSensing } from './xr/xr-depth-sensing.js';
 export { XrManager } from './xr/xr-manager.js';
 export { XrHitTest } from './xr/xr-hit-test.js';
 export { XrHitTestSource } from './xr/xr-hit-test-source.js';
+export { XrImageTracking } from './xr/xr-image-tracking.js';
+export { XrTrackedImage } from './xr/xr-tracked-image.js';
+export { XrDomOverlay } from './xr/xr-dom-overlay.js';
 
 // BACKWARDS COMPATIBILITY
 export * from './deprecated.js';

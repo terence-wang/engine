@@ -1,31 +1,50 @@
 import { math } from './math.js';
+import { Vec2 } from './vec2.js';
 import { Vec3 } from './vec3.js';
 import { Vec4 } from './vec4.js';
 
+var _halfSize = new Vec2();
+var x = new Vec3();
+var y = new Vec3();
+var z = new Vec3();
+var scale = new Vec3();
+
+
 /**
  * @class
- * @name pc.Mat4
+ * @name Mat4
  * @classdesc A 4x4 matrix.
  * @description Creates a new identity Mat4 object.
  * @property {Float32Array} data Matrix elements in the form of a flat array.
  */
-function Mat4() {
-    var data = new Float32Array(16);
-    // Create an identity matrix. Note that a new Float32Array has all elements set
-    // to zero by default, so we only need to set the relevant elements to one.
-    data[0] = data[5] = data[10] = data[15] = 1;
-    this.data = data;
-}
+class Mat4 {
+    constructor() {
+        var data = new Float32Array(16);
+        // Create an identity matrix. Note that a new Float32Array has all elements set
+        // to zero by default, so we only need to set the relevant elements to one.
+        data[0] = data[5] = data[10] = data[15] = 1;
+        this.data = data;
+    }
 
-Object.assign(Mat4.prototype, {
+    // Static function which evaluates perspective projection matrix half size at the near plane
+    static _getPerspectiveHalfSize(halfSize, fov, aspect, znear, fovIsHorizontal) {
+        if (fovIsHorizontal) {
+            halfSize.x = znear * Math.tan(fov * Math.PI / 360);
+            halfSize.y = halfSize.x / aspect;
+        } else {
+            halfSize.y = znear * Math.tan(fov * Math.PI / 360);
+            halfSize.x = halfSize.y * aspect;
+        }
+    }
+
     /**
      * @function
-     * @name pc.Mat4#add2
+     * @name Mat4#add2
      * @description Adds the specified 4x4 matrices together and stores the result in
      * the current instance.
-     * @param {pc.Mat4} lhs - The 4x4 matrix used as the first operand of the addition.
-     * @param {pc.Mat4} rhs - The 4x4 matrix used as the second operand of the addition.
-     * @returns {pc.Mat4} Self for chaining.
+     * @param {Mat4} lhs - The 4x4 matrix used as the first operand of the addition.
+     * @param {Mat4} rhs - The 4x4 matrix used as the second operand of the addition.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var m = new pc.Mat4();
      *
@@ -33,7 +52,7 @@ Object.assign(Mat4.prototype, {
      *
      * console.log("The result of the addition is: " + m.toString());
      */
-    add2: function (lhs, rhs) {
+    add2(lhs, rhs) {
         var a = lhs.data,
             b = rhs.data,
             r = this.data;
@@ -56,14 +75,14 @@ Object.assign(Mat4.prototype, {
         r[15] = a[15] + b[15];
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#add
+     * @name Mat4#add
      * @description Adds the specified 4x4 matrix to the current instance.
-     * @param {pc.Mat4} rhs - The 4x4 matrix used as the second operand of the addition.
-     * @returns {pc.Mat4} Self for chaining.
+     * @param {Mat4} rhs - The 4x4 matrix used as the second operand of the addition.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var m = new pc.Mat4();
      *
@@ -71,37 +90,37 @@ Object.assign(Mat4.prototype, {
      *
      * console.log("The result of the addition is: " + m.toString());
      */
-    add: function (rhs) {
+    add(rhs) {
         return this.add2(this, rhs);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#clone
+     * @name Mat4#clone
      * @description Creates a duplicate of the specified matrix.
-     * @returns {pc.Mat4} A duplicate matrix.
+     * @returns {Mat4} A duplicate matrix.
      * @example
      * var src = new pc.Mat4().setFromEulerAngles(10, 20, 30);
      * var dst = src.clone();
      * console.log("The two matrices are " + (src.equals(dst) ? "equal" : "different"));
      */
-    clone: function () {
+    clone() {
         return new Mat4().copy(this);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#copy
+     * @name Mat4#copy
      * @description Copies the contents of a source 4x4 matrix to a destination 4x4 matrix.
-     * @param {pc.Mat4} rhs - A 4x4 matrix to be copied.
-     * @returns {pc.Mat4} Self for chaining.
+     * @param {Mat4} rhs - A 4x4 matrix to be copied.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var src = new pc.Mat4().setFromEulerAngles(10, 20, 30);
      * var dst = new pc.Mat4();
      * dst.copy(src);
      * console.log("The two matrices are " + (src.equals(dst) ? "equal" : "different"));
      */
-    copy: function (rhs) {
+    copy(rhs) {
         var src = rhs.data,
             dst = this.data;
 
@@ -123,20 +142,20 @@ Object.assign(Mat4.prototype, {
         dst[15] = src[15];
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#equals
+     * @name Mat4#equals
      * @description Reports whether two matrices are equal.
-     * @param {pc.Mat4} rhs - The other matrix.
+     * @param {Mat4} rhs - The other matrix.
      * @returns {boolean} True if the matrices are equal and false otherwise.
      * @example
      * var a = new pc.Mat4().setFromEulerAngles(10, 20, 30);
      * var b = new pc.Mat4();
      * console.log("The two matrices are " + (a.equals(b) ? "equal" : "different"));
      */
-    equals: function (rhs) {
+    equals(rhs) {
         var l = this.data,
             r = rhs.data;
 
@@ -156,18 +175,18 @@ Object.assign(Mat4.prototype, {
                 (l[13] === r[13]) &&
                 (l[14] === r[14]) &&
                 (l[15] === r[15]));
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#isIdentity
+     * @name Mat4#isIdentity
      * @description Reports whether the specified matrix is the identity matrix.
      * @returns {boolean} True if the matrix is identity and false otherwise.
      * @example
      * var m = new pc.Mat4();
      * console.log("The matrix is " + (m.isIdentity() ? "identity" : "not identity"));
      */
-    isIdentity: function () {
+    isIdentity() {
         var m = this.data;
 
         return ((m[0] === 1) &&
@@ -186,16 +205,16 @@ Object.assign(Mat4.prototype, {
                 (m[13] === 0) &&
                 (m[14] === 0) &&
                 (m[15] === 1));
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#mul2
+     * @name Mat4#mul2
      * @description Multiplies the specified 4x4 matrices together and stores the result in
      * the current instance.
-     * @param {pc.Mat4} lhs - The 4x4 matrix used as the first multiplicand of the operation.
-     * @param {pc.Mat4} rhs - The 4x4 matrix used as the second multiplicand of the operation.
-     * @returns {pc.Mat4} Self for chaining.
+     * @param {Mat4} lhs - The 4x4 matrix used as the first multiplicand of the operation.
+     * @param {Mat4} rhs - The 4x4 matrix used as the second multiplicand of the operation.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var a = new pc.Mat4().setFromEulerAngles(10, 20, 30);
      * var b = new pc.Mat4().setFromAxisAngle(pc.Vec3.UP, 180);
@@ -206,7 +225,7 @@ Object.assign(Mat4.prototype, {
      *
      * console.log("The result of the multiplication is: " + r.toString());
      */
-    mul2: function (lhs, rhs) {
+    mul2(lhs, rhs) {
         var a00, a01, a02, a03,
             a10, a11, a12, a13,
             a20, a21, a22, a23,
@@ -270,20 +289,20 @@ Object.assign(Mat4.prototype, {
         r[15] = a03 * b0 + a13 * b1 + a23 * b2 + a33 * b3;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#mulAffine2
+     * @name Mat4#mulAffine2
      * @description Multiplies the specified 4x4 matrices together and stores the result in
      * the current instance. This function assumes the matrices are affine transformation matrices, where the upper left 3x3 elements
      * are a rotation matrix, and the bottom left 3 elements are translation. The rightmost column is assumed to be [0, 0, 0, 1]. The parameters
-     * are not verified to be in the expected format. This function is faster than general {@link pc.Mat4#mul2}.
-     * @param {pc.Mat4} lhs - The affine transformation 4x4 matrix used as the first multiplicand of the operation.
-     * @param {pc.Mat4} rhs - The affine transformation 4x4 matrix used as the second multiplicand of the operation.
-     * @returns {pc.Mat4} Self for chaining.
+     * are not verified to be in the expected format. This function is faster than general {@link Mat4#mul2}.
+     * @param {Mat4} lhs - The affine transformation 4x4 matrix used as the first multiplicand of the operation.
+     * @param {Mat4} rhs - The affine transformation 4x4 matrix used as the second multiplicand of the operation.
+     * @returns {Mat4} Self for chaining.
      */
-    mulAffine2: function (lhs, rhs) {
+    mulAffine2(lhs, rhs) {
         var a00, a01, a02,
             a10, a11, a12,
             a20, a21, a22,
@@ -339,14 +358,14 @@ Object.assign(Mat4.prototype, {
         r[15] = 1;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#mul
+     * @name Mat4#mul
      * @description Multiplies the current instance by the specified 4x4 matrix.
-     * @param {pc.Mat4} rhs - The 4x4 matrix used as the second multiplicand of the operation.
-     * @returns {pc.Mat4} Self for chaining.
+     * @param {Mat4} rhs - The 4x4 matrix used as the second multiplicand of the operation.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var a = new pc.Mat4().setFromEulerAngles(10, 20, 30);
      * var b = new pc.Mat4().setFromAxisAngle(pc.Vec3.UP, 180);
@@ -356,17 +375,17 @@ Object.assign(Mat4.prototype, {
      *
      * console.log("The result of the multiplication is: " + a.toString());
      */
-    mul: function (rhs) {
+    mul(rhs) {
         return this.mul2(this, rhs);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#transformPoint
+     * @name Mat4#transformPoint
      * @description Transforms a 3-dimensional point by a 4x4 matrix.
-     * @param {pc.Vec3} vec - The 3-dimensional point to be transformed.
-     * @param {pc.Vec3} [res] - An optional 3-dimensional point to receive the result of the transformation.
-     * @returns {pc.Vec3} The input point v transformed by the current instance.
+     * @param {Vec3} vec - The 3-dimensional point to be transformed.
+     * @param {Vec3} [res] - An optional 3-dimensional point to receive the result of the transformation.
+     * @returns {Vec3} The input point v transformed by the current instance.
      * @example
      * // Create a 3-dimensional point
      * var v = new pc.Vec3(1, 2, 3);
@@ -376,7 +395,7 @@ Object.assign(Mat4.prototype, {
      *
      * var tv = m.transformPoint(v);
      */
-    transformPoint: function (vec, res) {
+    transformPoint(vec, res = new Vec3()) {
         var x, y, z, m;
 
         m = this.data;
@@ -385,22 +404,20 @@ Object.assign(Mat4.prototype, {
         y = vec.y;
         z = vec.z;
 
-        res = (res === undefined) ? new Vec3() : res;
-
         res.x = x * m[0] + y * m[4] + z * m[8] + m[12];
         res.y = x * m[1] + y * m[5] + z * m[9] + m[13];
         res.z = x * m[2] + y * m[6] + z * m[10] + m[14];
 
         return res;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#transformVector
+     * @name Mat4#transformVector
      * @description Transforms a 3-dimensional vector by a 4x4 matrix.
-     * @param {pc.Vec3} vec - The 3-dimensional vector to be transformed.
-     * @param {pc.Vec3} [res] - An optional 3-dimensional vector to receive the result of the transformation.
-     * @returns {pc.Vec3} The input vector v transformed by the current instance.
+     * @param {Vec3} vec - The 3-dimensional vector to be transformed.
+     * @param {Vec3} [res] - An optional 3-dimensional vector to receive the result of the transformation.
+     * @returns {Vec3} The input vector v transformed by the current instance.
      * @example
      * // Create a 3-dimensional vector
      * var v = new pc.Vec3(1, 2, 3);
@@ -410,7 +427,7 @@ Object.assign(Mat4.prototype, {
      *
      * var tv = m.transformVector(v);
      */
-    transformVector: function (vec, res) {
+    transformVector(vec, res = new Vec3()) {
         var x, y, z, m;
 
         m = this.data;
@@ -419,22 +436,20 @@ Object.assign(Mat4.prototype, {
         y = vec.y;
         z = vec.z;
 
-        res = (res === undefined) ? new Vec3() : res;
-
         res.x = x * m[0] + y * m[4] + z * m[8];
         res.y = x * m[1] + y * m[5] + z * m[9];
         res.z = x * m[2] + y * m[6] + z * m[10];
 
         return res;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#transformVec4
+     * @name Mat4#transformVec4
      * @description Transforms a 4-dimensional vector by a 4x4 matrix.
-     * @param {pc.Vec4} vec - The 4-dimensional vector to be transformed.
-     * @param {pc.Vec4} [res] - An optional 4-dimensional vector to receive the result of the transformation.
-     * @returns {pc.Vec4} The input vector v transformed by the current instance.
+     * @param {Vec4} vec - The 4-dimensional vector to be transformed.
+     * @param {Vec4} [res] - An optional 4-dimensional vector to receive the result of the transformation.
+     * @returns {Vec4} The input vector v transformed by the current instance.
      * @example
      * // Create an input 4-dimensional vector
      * var v = new pc.Vec4(1, 2, 3, 4);
@@ -447,7 +462,7 @@ Object.assign(Mat4.prototype, {
      *
      * m.transformVec4(v, result);
      */
-    transformVec4: function (vec, res) {
+    transformVec4(vec, res = new Vec4()) {
         var x, y, z, w, m;
 
         m = this.data;
@@ -457,75 +472,65 @@ Object.assign(Mat4.prototype, {
         z = vec.z;
         w = vec.w;
 
-        res = (res === undefined) ? new Vec4() : res;
-
         res.x = x * m[0] + y * m[4] + z * m[8] + w * m[12];
         res.y = x * m[1] + y * m[5] + z * m[9] + w * m[13];
         res.z = x * m[2] + y * m[6] + z * m[10] + w * m[14];
         res.w = x * m[3] + y * m[7] + z * m[11] + w * m[15];
 
         return res;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#setLookAt
+     * @name Mat4#setLookAt
      * @description Sets the specified matrix to a viewing matrix derived from an eye point, a target point
      * and an up vector. The matrix maps the target point to the negative z-axis and the eye point to the
      * origin, so that when you use a typical projection matrix, the center of the scene maps to the center
      * of the viewport. Similarly, the direction described by the up vector projected onto the viewing plane
      * is mapped to the positive y-axis so that it points upward in the viewport. The up vector must not be
      * parallel to the line of sight from the eye to the reference point.
-     * @param {pc.Vec3} position - 3-d vector holding view position.
-     * @param {pc.Vec3} target - 3-d vector holding reference point.
-     * @param {pc.Vec3} up - 3-d vector holding the up direction.
-     * @returns {pc.Mat4} Self for chaining.
+     * @param {Vec3} position - 3-d vector holding view position.
+     * @param {Vec3} target - 3-d vector holding reference point.
+     * @param {Vec3} up - 3-d vector holding the up direction.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var position = new pc.Vec3(10, 10, 10);
      * var target = new pc.Vec3(0, 0, 0);
      * var up = new pc.Vec3(0, 1, 0);
      * var m = new pc.Mat4().setLookAt(position, target, up);
      */
-    setLookAt: (function () {
-        var x, y, z;
+    setLookAt(position, target, up) {
+        z.sub2(position, target).normalize();
+        y.copy(up).normalize();
+        x.cross(y, z).normalize();
+        y.cross(z, x);
 
-        x = new Vec3();
-        y = new Vec3();
-        z = new Vec3();
+        var r = this.data;
 
-        return function (position, target, up) {
-            z.sub2(position, target).normalize();
-            y.copy(up).normalize();
-            x.cross(y, z).normalize();
-            y.cross(z, x);
+        r[0]  = x.x;
+        r[1]  = x.y;
+        r[2]  = x.z;
+        r[3]  = 0;
+        r[4]  = y.x;
+        r[5]  = y.y;
+        r[6]  = y.z;
+        r[7]  = 0;
+        r[8]  = z.x;
+        r[9]  = z.y;
+        r[10] = z.z;
+        r[11] = 0;
+        r[12] = position.x;
+        r[13] = position.y;
+        r[14] = position.z;
+        r[15] = 1;
 
-            var r = this.data;
-
-            r[0]  = x.x;
-            r[1]  = x.y;
-            r[2]  = x.z;
-            r[3]  = 0;
-            r[4]  = y.x;
-            r[5]  = y.y;
-            r[6]  = y.z;
-            r[7]  = 0;
-            r[8]  = z.x;
-            r[9]  = z.y;
-            r[10] = z.z;
-            r[11] = 0;
-            r[12] = position.x;
-            r[13] = position.y;
-            r[14] = position.z;
-            r[15] = 1;
-
-            return this;
-        };
-    }()),
+        return this;
+    }
 
     /**
      * @private
      * @function
-     * @name pc.Mat4#setFrustum
+     * @name Mat4#setFrustum
      * @description Sets the specified matrix to a perspective projection matrix. The function's parameters define
      * the shape of a frustum.
      * @param {number} left - The x-coordinate for the left edge of the camera's projection plane in eye space.
@@ -534,12 +539,12 @@ Object.assign(Mat4.prototype, {
      * @param {number} top - The y-coordinate for the top edge of the camera's projection plane in eye space.
      * @param {number} znear - The near clip plane in eye coordinates.
      * @param {number} zfar - The far clip plane in eye coordinates.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * // Create a 4x4 perspective projection matrix
      * var f = pc.Mat4().setFrustum(-2, 2, -1, 1, 1, 1000);
      */
-    setFrustum: function (left, right, bottom, top, znear, zfar) {
+    setFrustum(left, right, bottom, top, znear, zfar) {
         var temp1, temp2, temp3, temp4, r;
 
         temp1 = 2 * znear;
@@ -566,11 +571,11 @@ Object.assign(Mat4.prototype, {
         r[15] = 0;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#setPerspective
+     * @name Mat4#setPerspective
      * @description Sets the specified matrix to a perspective projection matrix. The function's
      * parameters define the shape of a frustum.
      * @param {number} fov - The frustum's field of view in degrees. The fovIsHorizontal parameter
@@ -581,28 +586,19 @@ Object.assign(Mat4.prototype, {
      * @param {number} zfar - The far clip plane in eye coordinates.
      * @param {boolean} [fovIsHorizontal=false] - Set to true to treat the fov as horizontal (x-axis)
      * and false for vertical (y-axis). Defaults to false.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * // Create a 4x4 perspective projection matrix
      * var persp = pc.Mat4().setPerspective(45, 16 / 9, 1, 1000);
      */
-    setPerspective: function (fov, aspect, znear, zfar, fovIsHorizontal) {
-        var xmax, ymax;
-
-        if (!fovIsHorizontal) {
-            ymax = znear * Math.tan(fov * Math.PI / 360);
-            xmax = ymax * aspect;
-        } else {
-            xmax = znear * Math.tan(fov * Math.PI / 360);
-            ymax = xmax / aspect;
-        }
-
-        return this.setFrustum(-xmax, xmax, -ymax, ymax, znear, zfar);
-    },
+    setPerspective(fov, aspect, znear, zfar, fovIsHorizontal) {
+        Mat4._getPerspectiveHalfSize(_halfSize, fov, aspect, znear, fovIsHorizontal);
+        return this.setFrustum(-_halfSize.x, _halfSize.x, -_halfSize.y, _halfSize.y, znear, zfar);
+    }
 
     /**
      * @function
-     * @name pc.Mat4#setOrtho
+     * @name Mat4#setOrtho
      * @description Sets the specified matrix to an orthographic projection matrix. The function's parameters
      * define the shape of a cuboid-shaped frustum.
      * @param {number} left - The x-coordinate for the left edge of the camera's projection plane in eye space.
@@ -611,12 +607,12 @@ Object.assign(Mat4.prototype, {
      * @param {number} top - The y-coordinate for the top edge of the camera's projection plane in eye space.
      * @param {number} near - The near clip plane in eye coordinates.
      * @param {number} far - The far clip plane in eye coordinates.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * // Create a 4x4 orthographic projection matrix
      * var ortho = pc.Mat4().ortho(-2, 2, -2, 2, 1, 1000);
      */
-    setOrtho: function (left, right, bottom, top, near, far) {
+    setOrtho(left, right, bottom, top, near, far) {
         var r = this.data;
 
         r[0] = 2 / (right - left);
@@ -637,21 +633,21 @@ Object.assign(Mat4.prototype, {
         r[15] = 1;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#setFromAxisAngle
+     * @name Mat4#setFromAxisAngle
      * @description Sets the specified matrix to a rotation matrix equivalent to a rotation around
      * an axis. The axis must be normalized (unit length) and the angle must be specified in degrees.
-     * @param {pc.Vec3} axis - The normalized axis vector around which to rotate.
+     * @param {Vec3} axis - The normalized axis vector around which to rotate.
      * @param {number} angle - The angle of rotation in degrees.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * // Create a 4x4 rotation matrix
      * var rm = new pc.Mat4().setFromAxisAngle(pc.Vec3.UP, 90);
      */
-    setFromAxisAngle: function (axis, angle) {
+    setFromAxisAngle(axis, angle) {
         var x, y, z, c, s, t, tx, ty, m;
 
         angle *= math.DEG_TO_RAD;
@@ -684,22 +680,22 @@ Object.assign(Mat4.prototype, {
         m[15] = 1;
 
         return this;
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.Mat4#setTranslate
+     * @name Mat4#setTranslate
      * @description Sets the specified matrix to a translation matrix.
      * @param {number} x - The x-component of the translation.
      * @param {number} y - The y-component of the translation.
      * @param {number} z - The z-component of the translation.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * // Create a 4x4 translation matrix
      * var tm = new pc.Mat4().setTranslate(10, 10, 10);
      */
-    setTranslate: function (x, y, z) {
+    setTranslate(x, y, z) {
         var m = this.data;
 
         m[0] = 1;
@@ -720,22 +716,22 @@ Object.assign(Mat4.prototype, {
         m[15] = 1;
 
         return this;
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.Mat4#setScale
+     * @name Mat4#setScale
      * @description Sets the specified matrix to a scale matrix.
      * @param {number} x - The x-component of the scale.
      * @param {number} y - The y-component of the scale.
      * @param {number} z - The z-component of the scale.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * // Create a 4x4 scale matrix
      * var sm = new pc.Mat4().setScale(10, 10, 10);
      */
-    setScale: function (x, y, z) {
+    setScale(x, y, z) {
         var m = this.data;
 
         m[0] = x;
@@ -756,13 +752,13 @@ Object.assign(Mat4.prototype, {
         m[15] = 1;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#invert
+     * @name Mat4#invert
      * @description Sets the specified matrix to its inverse.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * // Create a 4x4 rotation matrix of 180 degrees around the y-axis
      * var rot = new pc.Mat4().setFromAxisAngle(pc.Vec3.UP, 180);
@@ -770,7 +766,7 @@ Object.assign(Mat4.prototype, {
      * // Invert in place
      * rot.invert();
      */
-    invert: function () {
+    invert() {
         var a00, a01, a02, a03,
             a10, a11, a12, a13,
             a20, a21, a22, a23,
@@ -837,16 +833,16 @@ Object.assign(Mat4.prototype, {
 
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#set
+     * @name Mat4#set
      * @description Sets matrix data from an array.
      * @param {number[]} src - Source array. Must have 16 values.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      */
-    set: function (src) {
+    set(src) {
         var dst = this.data;
         dst[0] = src[0];
         dst[1] = src[1];
@@ -866,18 +862,18 @@ Object.assign(Mat4.prototype, {
         dst[15] = src[15];
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#setIdentity
+     * @name Mat4#setIdentity
      * @description Sets the specified matrix to the identity matrix.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * m.setIdentity();
      * console.log("The matrix is " + (m.isIdentity() ? "identity" : "not identity"));
      */
-    setIdentity: function () {
+    setIdentity() {
         var m = this.data;
         m[0] = 1;
         m[1] = 0;
@@ -897,17 +893,17 @@ Object.assign(Mat4.prototype, {
         m[15] = 1;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#setTRS
+     * @name Mat4#setTRS
      * @description Sets the specified matrix to the concatenation of a translation, a
      * quaternion rotation and a scale.
-     * @param {pc.Vec3} t - A 3-d vector translation.
-     * @param {pc.Quat} r - A quaternion rotation.
-     * @param {pc.Vec3} s - A 3-d vector scale.
-     * @returns {pc.Mat4} Self for chaining.
+     * @param {Vec3} t - A 3-d vector translation.
+     * @param {Quat} r - A quaternion rotation.
+     * @param {Vec3} s - A 3-d vector scale.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var t = new pc.Vec3(10, 20, 30);
      * var r = new pc.Quat();
@@ -916,7 +912,7 @@ Object.assign(Mat4.prototype, {
      * var m = new pc.Mat4();
      * m.setTRS(t, r, s);
      */
-    setTRS: function (t, r, s) {
+    setTRS(t, r, s) {
         var qx, qy, qz, qw, sx, sy, sz,
             x2, y2, z2, xx, xy, xz, yy, yz, zz, wx, wy, wz, m;
 
@@ -965,20 +961,20 @@ Object.assign(Mat4.prototype, {
         m[15] = 1;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#transpose
+     * @name Mat4#transpose
      * @description Sets the specified matrix to its transpose.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var m = new pc.Mat4();
      *
      * // Transpose in place
      * m.transpose();
      */
-    transpose: function () {
+    transpose() {
         var tmp, m = this.data;
 
         tmp = m[1];
@@ -1006,9 +1002,9 @@ Object.assign(Mat4.prototype, {
         m[14] = tmp;
 
         return this;
-    },
+    }
 
-    invertTo3x3: function (res) {
+    invertTo3x3(res) {
         var a11, a21, a31, a12, a22, a32, a13, a23, a33,
             m, r, det, idet;
 
@@ -1055,14 +1051,14 @@ Object.assign(Mat4.prototype, {
         r[8] = idet * a33;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#getTranslation
+     * @name Mat4#getTranslation
      * @description Extracts the translational component from the specified 4x4 matrix.
-     * @param {pc.Vec3} [t] - The vector to receive the translation of the matrix.
-     * @returns {pc.Vec3} The translation of the specified 4x4 matrix.
+     * @param {Vec3} [t] - The vector to receive the translation of the matrix.
+     * @returns {Vec3} The translation of the specified 4x4 matrix.
      * @example
      * // Create a 4x4 matrix
      * var m = new pc.Mat4();
@@ -1071,18 +1067,16 @@ Object.assign(Mat4.prototype, {
      * var t = new pc.Vec3();
      * m.getTranslation(t);
      */
-    getTranslation: function (t) {
-        t = (t === undefined) ? new Vec3() : t;
-
+    getTranslation(t = new Vec3()) {
         return t.set(this.data[12], this.data[13], this.data[14]);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#getX
+     * @name Mat4#getX
      * @description Extracts the x-axis from the specified 4x4 matrix.
-     * @param {pc.Vec3} [x] - The vector to receive the x axis of the matrix.
-     * @returns {pc.Vec3} The x-axis of the specified 4x4 matrix.
+     * @param {Vec3} [x] - The vector to receive the x axis of the matrix.
+     * @returns {Vec3} The x-axis of the specified 4x4 matrix.
      * @example
      * // Create a 4x4 matrix
      * var m = new pc.Mat4();
@@ -1091,18 +1085,16 @@ Object.assign(Mat4.prototype, {
      * var x = new pc.Vec3();
      * m.getX(x);
      */
-    getX: function (x) {
-        x = (x === undefined) ? new Vec3() : x;
-
+    getX(x = new Vec3()) {
         return x.set(this.data[0], this.data[1], this.data[2]);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#getY
+     * @name Mat4#getY
      * @description Extracts the y-axis from the specified 4x4 matrix.
-     * @param {pc.Vec3} [y] - The vector to receive the y axis of the matrix.
-     * @returns {pc.Vec3} The y-axis of the specified 4x4 matrix.
+     * @param {Vec3} [y] - The vector to receive the y axis of the matrix.
+     * @returns {Vec3} The y-axis of the specified 4x4 matrix.
      * @example
      * // Create a 4x4 matrix
      * var m = new pc.Mat4();
@@ -1111,18 +1103,16 @@ Object.assign(Mat4.prototype, {
      * var y = new pc.Vec3();
      * m.getY(y);
      */
-    getY: function (y) {
-        y = (y === undefined) ? new Vec3() : y;
-
+    getY(y = new Vec3()) {
         return y.set(this.data[4], this.data[5], this.data[6]);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#getZ
+     * @name Mat4#getZ
      * @description Extracts the z-axis from the specified 4x4 matrix.
-     * @param {pc.Vec3} [z] - The vector to receive the z axis of the matrix.
-     * @returns {pc.Vec3} The z-axis of the specified 4x4 matrix.
+     * @param {Vec3} [z] - The vector to receive the z axis of the matrix.
+     * @returns {Vec3} The z-axis of the specified 4x4 matrix.
      * @example
      * // Create a 4x4 matrix
      * var m = new pc.Mat4();
@@ -1131,18 +1121,16 @@ Object.assign(Mat4.prototype, {
      * var z = new pc.Vec3();
      * m.getZ(z);
      */
-    getZ: function (z) {
-        z = (z === undefined) ? new Vec3() : z;
-
+    getZ(z = new Vec3()) {
         return z.set(this.data[8], this.data[9], this.data[10]);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#getScale
+     * @name Mat4#getScale
      * @description Extracts the scale component from the specified 4x4 matrix.
-     * @param {pc.Vec3} [scale] - Vector to receive the scale.
-     * @returns {pc.Vec3} The scale in X, Y and Z of the specified 4x4 matrix.
+     * @param {Vec3} [scale] - Vector to receive the scale.
+     * @returns {Vec3} The scale in X, Y and Z of the specified 4x4 matrix.
      * @example
      * // Create a 4x4 scale matrix
      * var m = new pc.Mat4().scale(2, 3, 4);
@@ -1150,34 +1138,24 @@ Object.assign(Mat4.prototype, {
      * // Query the scale component
      * var scale = m.getScale();
      */
-    getScale: (function () {
-        var x, y, z;
+    getScale(scale = new Vec3()) {
+        this.getX(x);
+        this.getY(y);
+        this.getZ(z);
+        scale.set(x.length(), y.length(), z.length());
 
-        x = new Vec3();
-        y = new Vec3();
-        z = new Vec3();
-
-        return function (scale) {
-            scale = (scale === undefined) ? new Vec3() : scale;
-
-            this.getX(x);
-            this.getY(y);
-            this.getZ(z);
-            scale.set(x.length(), y.length(), z.length());
-
-            return scale;
-        };
-    }()),
+        return scale;
+    }
 
     /**
      * @function
-     * @name pc.Mat4#setFromEulerAngles
+     * @name Mat4#setFromEulerAngles
      * @description Sets the specified matrix to a rotation matrix defined by
      * Euler angles. The Euler angles are specified in XYZ order and in degrees.
      * @param {number} ex - Angle to rotate around X axis in degrees.
      * @param {number} ey - Angle to rotate around Y axis in degrees.
      * @param {number} ez - Angle to rotate around Z axis in degrees.
-     * @returns {pc.Mat4} Self for chaining.
+     * @returns {Mat4} Self for chaining.
      * @example
      * var m = new pc.Mat4();
      * m.setFromEulerAngles(45, 90, 180);
@@ -1185,7 +1163,7 @@ Object.assign(Mat4.prototype, {
     // http://en.wikipedia.org/wiki/Rotation_matrix#Conversion_from_and_to_axis-angle
     // The 3D space is right-handed, so the rotation around each axis will be counterclockwise
     // for an observer placed so that the axis goes in his or her direction (Right-hand rule).
-    setFromEulerAngles: function (ex, ey, ez) {
+    setFromEulerAngles(ex, ey, ez) {
         var s1, c1, s2, c2, s3, c3, m;
 
         ex *= math.DEG_TO_RAD;
@@ -1224,61 +1202,55 @@ Object.assign(Mat4.prototype, {
         m[15] = 1;
 
         return this;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Mat4#getEulerAngles
+     * @name Mat4#getEulerAngles
      * @description Extracts the Euler angles equivalent to the rotational portion
      * of the specified matrix. The returned Euler angles are in XYZ order an in degrees.
-     * @param {pc.Vec3} [eulers] - A 3-d vector to receive the Euler angles.
-     * @returns {pc.Vec3} A 3-d vector containing the Euler angles.
+     * @param {Vec3} [eulers] - A 3-d vector to receive the Euler angles.
+     * @returns {Vec3} A 3-d vector containing the Euler angles.
      * @example
      * // Create a 4x4 rotation matrix of 45 degrees around the y-axis
      * var m = new pc.Mat4().setFromAxisAngle(pc.Vec3.UP, 45);
      *
      * var eulers = m.getEulerAngles();
      */
-    getEulerAngles: (function () {
-        var scale = new Vec3();
+    getEulerAngles(eulers = new Vec3()) {
+        var x, y, z, sx, sy, sz, m, halfPi;
 
-        return function (eulers) {
-            var x, y, z, sx, sy, sz, m, halfPi;
+        this.getScale(scale);
+        sx = scale.x;
+        sy = scale.y;
+        sz = scale.z;
 
-            eulers = (eulers === undefined) ? new Vec3() : eulers;
+        m = this.data;
 
-            this.getScale(scale);
-            sx = scale.x;
-            sy = scale.y;
-            sz = scale.z;
+        y = Math.asin(-m[2] / sx);
+        halfPi = Math.PI * 0.5;
 
-            m = this.data;
-
-            y = Math.asin(-m[2] / sx);
-            halfPi = Math.PI * 0.5;
-
-            if (y < halfPi) {
-                if (y > -halfPi) {
-                    x = Math.atan2(m[6] / sy, m[10] / sz);
-                    z = Math.atan2(m[1] / sx, m[0] / sx);
-                } else {
-                    // Not a unique solution
-                    z = 0;
-                    x = -Math.atan2(m[4] / sy, m[5] / sy);
-                }
+        if (y < halfPi) {
+            if (y > -halfPi) {
+                x = Math.atan2(m[6] / sy, m[10] / sz);
+                z = Math.atan2(m[1] / sx, m[0] / sx);
             } else {
                 // Not a unique solution
                 z = 0;
-                x = Math.atan2(m[4] / sy, m[5] / sy);
+                x = -Math.atan2(m[4] / sy, m[5] / sy);
             }
+        } else {
+            // Not a unique solution
+            z = 0;
+            x = Math.atan2(m[4] / sy, m[5] / sy);
+        }
 
-            return eulers.set(x, y, z).scale(math.RAD_TO_DEG);
-        };
-    }()),
+        return eulers.set(x, y, z).scale(math.RAD_TO_DEG);
+    }
 
     /**
      * @function
-     * @name pc.Mat4#toString
+     * @name Mat4#toString
      * @description Converts the specified matrix to string form.
      * @returns {string} The matrix in string form.
      * @example
@@ -1286,7 +1258,7 @@ Object.assign(Mat4.prototype, {
      * // Should output '[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]'
      * console.log(m.toString());
      */
-    toString: function () {
+    toString() {
         var i, t;
 
         t = '[';
@@ -1297,32 +1269,26 @@ Object.assign(Mat4.prototype, {
         t += ']';
         return t;
     }
-});
 
-/**
- * @field
- * @static
- * @readonly
- * @name pc.Mat4.IDENTITY
- * @type {pc.Mat4}
- * @description A constant matrix set to the identity.
- */
+    /**
+     * @field
+     * @static
+     * @readonly
+     * @name Mat4.IDENTITY
+     * @type {Mat4}
+     * @description A constant matrix set to the identity.
+     */
+    static IDENTITY = Object.freeze(new Mat4());
 
-/**
- * @field
- * @static
- * @readonly
- * @name pc.Mat4.ZERO
- * @type {pc.Mat4}
- * @description A constant matrix with all elements set to 0.
- */
-
-Object.defineProperties(Mat4, {
-    ZERO: { value: new Mat4().set([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]) },
-    IDENTITY: { value: new Mat4() }
-});
-
-Object.freeze(Mat4.ZERO);
-Object.freeze(Mat4.IDENTITY);
+    /**
+     * @field
+     * @static
+     * @readonly
+     * @name Mat4.ZERO
+     * @type {Mat4}
+     * @description A constant matrix with all elements set to 0.
+     */
+    static ZERO = Object.freeze(new Mat4().set([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+}
 
 export { Mat4 };

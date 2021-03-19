@@ -5,7 +5,7 @@ import {
     FILTER_LINEAR, FILTER_NEAREST, FILTER_NEAREST_MIPMAP_NEAREST, FILTER_NEAREST_MIPMAP_LINEAR, FILTER_LINEAR_MIPMAP_NEAREST, FILTER_LINEAR_MIPMAP_LINEAR,
     PIXELFORMAT_R8_G8_B8, PIXELFORMAT_R8_G8_B8_A8, PIXELFORMAT_RGBA32F,
     TEXTURETYPE_DEFAULT, TEXTURETYPE_RGBE, TEXTURETYPE_RGBM, TEXTURETYPE_SWIZZLEGGGR
-} from '../graphics/graphics.js';
+} from '../graphics/constants.js';
 import { Texture } from '../graphics/texture.js';
 
 import { BasisParser } from './parser/texture/basis.js';
@@ -37,46 +37,46 @@ var JSON_TEXTURE_TYPE = {
 
 /**
  * @interface
- * @name pc.TextureParser
+ * @name TextureParser
  * @description Interface to a texture parser. Implementations of this interface handle the loading
  * and opening of texture assets.
  */
-function TextureParser() {}
+class TextureParser {
+    constructor() {}
 
-Object.assign(TextureParser.prototype, {
     /**
      * @function
-     * @name pc.TextureParser#load
+     * @name TextureParser#load
      * @description Load the texture from the remote URL. When loaded (or failed),
      * use the callback to return an the raw resource data (or error).
      * @param {object} url - The URL of the resource to load.
      * @param {string} url.load - The URL to use for loading the resource
      * @param {string} url.original - The original URL useful for identifying the resource type
-     * @param {pc.callbacks.ResourceHandler} callback - The callback used when the resource is loaded or an error occurs.
-     * @param {pc.Asset} [asset] - Optional asset that is passed by ResourceLoader.
+     * @param {callbacks.ResourceHandler} callback - The callback used when the resource is loaded or an error occurs.
+     * @param {Asset} [asset] - Optional asset that is passed by ResourceLoader.
      */
     /* eslint-disable jsdoc/require-returns-check */
-    load: function (url, callback, asset) {
+    load(url, callback, asset) {
         throw new Error('not implemented');
-    },
+    }
     /* eslint-enable jsdoc/require-returns-check */
 
     /**
      * @function
-     * @name pc.TextureParser#open
-     * @description Convert raw resource data into a resource instance. E.g. Take 3D model format JSON and return a pc.Model.
+     * @name TextureParser#open
+     * @description Convert raw resource data into a resource instance. E.g. Take 3D model format JSON and return a {@link Model}.
      * @param {string} url - The URL of the resource to open.
-     * @param {*} data - The raw resource data passed by callback from {@link pc.ResourceHandler#load}.
-     * @param {pc.Asset|null} asset - Optional asset which is passed in by ResourceLoader.
-     * @param {pc.GraphicsDevice} device - The graphics device
-     * @returns {pc.Texture} The parsed resource data.
+     * @param {*} data - The raw resource data passed by callback from {@link ResourceHandler#load}.
+     * @param {Asset|null} asset - Optional asset which is passed in by ResourceLoader.
+     * @param {GraphicsDevice} device - The graphics device
+     * @returns {Texture} The parsed resource data.
      */
     /* eslint-disable jsdoc/require-returns-check */
-    open: function (url, data, device) {
+    open(url, data, device) {
         throw new Error('not implemented');
     }
     /* eslint-enable jsdoc/require-returns-check */
-});
+}
 
 // In the case where a texture has more than 1 level of mip data specified, but not the full
 // mip chain, we generate the missing levels here.
@@ -150,65 +150,61 @@ var _completePartialMipmapChain = function (texture) {
 
 /**
  * @class
- * @name pc.TextureHandler
- * @implements {pc.ResourceHandler}
- * @classdesc Resource handler used for loading 2D and 3D {@link pc.Texture} resources.
- * @param {pc.GraphicsDevice} device - The graphics device.
- * @param {pc.AssetRegistry} assets - The asset registry.
- * @param {pc.ResourceLoader} loader - The resource loader.
+ * @name TextureHandler
+ * @implements {ResourceHandler}
+ * @classdesc Resource handler used for loading 2D and 3D {@link Texture} resources.
+ * @param {GraphicsDevice} device - The graphics device.
+ * @param {AssetRegistry} assets - The asset registry.
+ * @param {ResourceLoader} loader - The resource loader.
  */
-function TextureHandler(device, assets, loader) {
-    this._device = device;
-    this._assets = assets;
-    this._loader = loader;
+class TextureHandler {
+    constructor(device, assets, loader) {
+        this._device = device;
+        this._assets = assets;
+        this._loader = loader;
 
-    // img parser handles all broswer-supported image formats, this
-    // parser will be used when other more specific parsers are not found.
-    this.imgParser = new ImgParser(assets, false);
+        // img parser handles all broswer-supported image formats, this
+        // parser will be used when other more specific parsers are not found.
+        this.imgParser = new ImgParser(assets);
 
-    this.parsers = {
-        dds: new LegacyDdsParser(assets, false),
-        ktx: new KtxParser(assets, false),
-        basis: new BasisParser(assets, false)
-    };
-}
+        this.parsers = {
+            dds: new LegacyDdsParser(assets),
+            ktx: new KtxParser(assets),
+            basis: new BasisParser(assets)
+        };
+    }
 
-Object.defineProperties(TextureHandler.prototype, {
-    crossOrigin: {
-        get: function () {
-            return this.imgParser.crossOrigin;
-        },
-        set: function (value) {
-            this.imgParser.crossOrigin = value;
-        }
-    },
+    get crossOrigin() {
+        return this.imgParser.crossOrigin;
+    }
 
-    retryRequests: {
-        get: function () {
-            return this.imgParser.retryRequests;
-        },
-        set: function (value) {
-            this.imgParser.retryRequests = value;
-            for (var parser in this.parsers) {
-                if (this.parsers.hasOwnProperty(parser)) {
-                    this.parsers[parser].retryRequests = value;
-                }
+    set crossOrigin(value) {
+        this.imgParser.crossOrigin = value;
+    }
+
+    get maxRetries() {
+        return this.imgParser.maxRetries;
+    }
+
+    set maxRetries(value) {
+        this.imgParser.maxRetries = value;
+        for (var parser in this.parsers) {
+            if (this.parsers.hasOwnProperty(parser)) {
+                this.parsers[parser].maxRetries = value;
             }
         }
     }
-});
 
-Object.assign(TextureHandler.prototype, {
-    _getUrlWithoutParams: function (url) {
+    _getUrlWithoutParams(url) {
         return url.indexOf('?') >= 0 ? url.split('?')[0] : url;
-    },
+    }
 
-    _getParser: function (url) {
+    _getParser(url) {
         var ext = path.getExtension(this._getUrlWithoutParams(url)).toLowerCase().replace('.', '');
         return this.parsers[ext] || this.imgParser;
-    },
+    }
 
-    load: function (url, callback, asset) {
+    load(url, callback, asset) {
         if (typeof url === 'string') {
             url = {
                 load: url,
@@ -217,9 +213,9 @@ Object.assign(TextureHandler.prototype, {
         }
 
         this._getParser(url.original).load(url, callback, asset);
-    },
+    }
 
-    open: function (url, data, asset) {
+    open(url, data, asset) {
         if (!url)
             return;
 
@@ -238,9 +234,9 @@ Object.assign(TextureHandler.prototype, {
         }
 
         return texture;
-    },
+    }
 
-    patch: function (asset, assets) {
+    patch(asset, assets) {
         var texture = asset.resource;
         if (!texture) {
             return;
@@ -297,6 +293,6 @@ Object.assign(TextureHandler.prototype, {
             }
         }
     }
-});
+}
 
 export { TextureHandler, TextureParser };

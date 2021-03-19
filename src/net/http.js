@@ -7,67 +7,68 @@ import { math } from '../math/math.js';
 
 /**
  * @class
- * @name pc.Http
+ * @name Http
  * @classdesc Used to send and receive HTTP requests.
  * @description Create a new Http instance. By default, a PlayCanvas application creates an instance of this
- * object at `pc.http`.
+ * object at `http`.
  */
-function Http() {}
+class Http {
+    constructor() {}
 
-Http.ContentType = {
-    FORM_URLENCODED: "application/x-www-form-urlencoded",
-    GIF: "image/gif",
-    JPEG: "image/jpeg",
-    DDS: "image/dds",
-    JSON: "application/json",
-    PNG: "image/png",
-    TEXT: "text/plain",
-    XML: "application/xml",
-    WAV: "audio/x-wav",
-    OGG: "audio/ogg",
-    MP3: "audio/mpeg",
-    MP4: "audio/mp4",
-    AAC: "audio/aac",
-    BIN: "application/octet-stream",
-    BASIS: "image/basis",
-    GLB: "model/gltf-binary"
-};
+    static ContentType = {
+        FORM_URLENCODED: "application/x-www-form-urlencoded",
+        GIF: "image/gif",
+        JPEG: "image/jpeg",
+        DDS: "image/dds",
+        JSON: "application/json",
+        PNG: "image/png",
+        TEXT: "text/plain",
+        XML: "application/xml",
+        WAV: "audio/x-wav",
+        OGG: "audio/ogg",
+        MP3: "audio/mpeg",
+        MP4: "audio/mp4",
+        AAC: "audio/aac",
+        BIN: "application/octet-stream",
+        BASIS: "image/basis",
+        GLB: "model/gltf-binary"
+    };
 
-Http.ResponseType = {
-    TEXT: 'text',
-    ARRAY_BUFFER: 'arraybuffer',
-    BLOB: 'blob',
-    DOCUMENT: 'document',
-    JSON: 'json'
-};
+    static ResponseType = {
+        TEXT: 'text',
+        ARRAY_BUFFER: 'arraybuffer',
+        BLOB: 'blob',
+        DOCUMENT: 'document',
+        JSON: 'json'
+    };
 
-Http.binaryExtensions = [
-    '.model',
-    '.wav',
-    '.ogg',
-    '.mp3',
-    '.mp4',
-    '.m4a',
-    '.aac',
-    '.dds',
-    '.basis',
-    '.glb'
-];
+    static binaryExtensions = [
+        '.model',
+        '.wav',
+        '.ogg',
+        '.mp3',
+        '.mp4',
+        '.m4a',
+        '.aac',
+        '.dds',
+        '.basis',
+        '.glb'
+    ];
 
-Http.retryDelay = 100;
+    static retryDelay = 100;
 
-Object.assign(Http.prototype, {
+    ContentType = Http.ContentType;
 
-    ContentType: Http.ContentType,
-    ResponseType: Http.ResponseType,
-    binaryExtensions: Http.binaryExtensions,
+    ResponseType = Http.ResponseType;
+
+    binaryExtensions = Http.binaryExtensions;
 
     /**
      * @function
-     * @name pc.Http#get
+     * @name Http#get
      * @description Perform an HTTP GET request to the given url.
      * @param {string} url - The URL to make the request to.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
      * @example
@@ -78,9 +79,9 @@ Object.assign(Http.prototype, {
      */
     /**
      * @function
-     * @name pc.Http#get
+     * @name Http#get
      * @variation 2
-     * @description Perform an HTTP GET request to the given url.
+     * @description Perform an HTTP GET request to the given url with addtional options such as headers, retries, credentials, etc.
      * @param {string} url - The URL to make the request to.
      * @param {object} options - Additional options.
      * @param {object} [options.headers] - HTTP headers to add to the request.
@@ -95,38 +96,46 @@ Object.assign(Http.prototype, {
      * @param {boolean} [options.retry] - If true then if the request fails it will be retried with an exponential backoff.
      * @param {number} [options.maxRetries] - If options.retry is true this specifies the maximum number of retries. Defaults to 5.
      * @param {number} [options.maxRetryDelay] - If options.retry is true this specifies the maximum amount of time to wait between retries in milliseconds. Defaults to 5000.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.get("http://example.com/", { "retry": true, "maxRetries": 5 }, function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
-    get: function (url, options, callback) {
+    get(url, options, callback) {
         if (typeof options === "function") {
             callback = options;
             options = {};
         }
         return this.request("GET", url, options, callback);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Http#post
+     * @name Http#post
      * @description Perform an HTTP POST request to the given url.
      * @param {string} url - The URL to make the request to.
      * @param {object} data - Data to send in the body of the request.
      * Some content types are handled automatically. If postdata is an XML Document, it is handled. If
      * the Content-Type header is set to 'application/json' then the postdata is JSON stringified.
      * Otherwise, by default, the data is sent as form-urlencoded.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.post("http://example.com/", { "name": "Alix" }, function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
     /**
      * @function
-     * @name pc.Http#post
+     * @name Http#post
      * @variation 2
-     * @description Perform an HTTP POST request to the given url.
+     * @description Perform an HTTP POST request to the given url with addtional options such as headers, retries, credentials, etc.
      * @param {string} url - The URL to make the request to.
      * @param {object} data - Data to send in the body of the request.
      * Some content types are handled automatically. If postdata is an XML Document, it is handled. If
@@ -141,39 +150,47 @@ Object.assign(Http.prototype, {
      * @param {boolean} [options.retry] - If true then if the request fails it will be retried with an exponential backoff.
      * @param {number} [options.maxRetries] - If options.retry is true this specifies the maximum number of retries. Defaults to 5.
      * @param {number} [options.maxRetryDelay] - If options.retry is true this specifies the maximum amount of time to wait between retries in milliseconds. Defaults to 5000.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.post("http://example.com/", { "name": "Alix" }, { "retry": true, "maxRetries": 5 }, function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
-    post: function (url, data, options, callback) {
+    post(url, data, options, callback) {
         if (typeof options === "function") {
             callback = options;
             options = {};
         }
         options.postdata = data;
         return this.request("POST", url, options, callback);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Http#put
+     * @name Http#put
      * @description Perform an HTTP PUT request to the given url.
      * @param {string} url - The URL to make the request to.
      * @param {Document|object} data - Data to send in the body of the request.
      * Some content types are handled automatically. If postdata is an XML Document, it is handled. If
      * the Content-Type header is set to 'application/json' then the postdata is JSON stringified.
      * Otherwise, by default, the data is sent as form-urlencoded.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.put("http://example.com/", { "name": "Alix" }, function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
     /**
      * @function
-     * @name pc.Http#put
+     * @name Http#put
      * @variation 2
-     * @description Perform an HTTP PUT request to the given url.
+     * @description Perform an HTTP PUT request to the given url with addtional options such as headers, retries, credentials, etc.
      * @param {string} url - The URL to make the request to.
      * @param {Document|object} data - Data to send in the body of the request.
      * Some content types are handled automatically. If postdata is an XML Document, it is handled. If
@@ -188,35 +205,43 @@ Object.assign(Http.prototype, {
      * @param {boolean} [options.retry] - If true then if the request fails it will be retried with an exponential backoff.
      * @param {number} [options.maxRetries] - If options.retry is true this specifies the maximum number of retries. Defaults to 5.
      * @param {number} [options.maxRetryDelay] - If options.retry is true this specifies the maximum amount of time to wait between retries in milliseconds. Defaults to 5000.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.put("http://example.com/", { "name": "Alix" }, { "retry": true, "maxRetries": 5 }, function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
-    put: function (url, data, options, callback) {
+    put(url, data, options, callback) {
         if (typeof options === "function") {
             callback = options;
             options = {};
         }
         options.postdata = data;
         return this.request("PUT", url, options, callback);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Http#del
+     * @name Http#del
      * @description Perform an HTTP DELETE request to the given url.
      * @param {object} url - The URL to make the request to.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.del("http://example.com/", function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
     /**
      * @function
-     * @name pc.Http#del
+     * @name Http#del
      * @variation 2
-     * @description Perform an HTTP DELETE request to the given url.
+     * @description Perform an HTTP DELETE request to the given url with addtional options such as headers, retries, credentials, etc.
      * @param {object} url - The URL to make the request to.
      * @param {object} options - Additional options.
      * @param {object} [options.headers] - HTTP headers to add to the request.
@@ -231,35 +256,43 @@ Object.assign(Http.prototype, {
      * @param {boolean} [options.retry] - If true then if the request fails it will be retried with an exponential backoff.
      * @param {number} [options.maxRetries] - If options.retry is true this specifies the maximum number of retries. Defaults to 5.
      * @param {number} [options.maxRetryDelay] - If options.retry is true this specifies the maximum amount of time to wait between retries in milliseconds. Defaults to 5000.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.del("http://example.com/", { "retry": true, "maxRetries": 5 }, function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
-    del: function (url, options, callback) {
+    del(url, options, callback) {
         if (typeof options === "function") {
             callback = options;
             options = {};
         }
         return this.request("DELETE", url, options, callback);
-    },
+    }
 
     /**
      * @function
-     * @name pc.Http#request
+     * @name Http#request
      * @description Make a general purpose HTTP request.
      * @param {string} method - The HTTP method "GET", "POST", "PUT", "DELETE".
      * @param {string} url - The url to make the request to.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.request("get", "http://example.com/", function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
     /**
      * @function
-     * @name pc.Http#request
+     * @name Http#request
      * @variation 2
-     * @description Make a general purpose HTTP request.
+     * @description Make a general purpose HTTP request with addtional options such as headers, retries, credentials, etc.
      * @param {string} method - The HTTP method "GET", "POST", "PUT", "DELETE".
      * @param {string} url - The url to make the request to.
      * @param {object} options - Additional options.
@@ -275,12 +308,16 @@ Object.assign(Http.prototype, {
      * Some content types are handled automatically. If postdata is an XML Document, it is handled. If
      * the Content-Type header is set to 'application/json' then the postdata is JSON stringified.
      * Otherwise, by default, the data is sent as form-urlencoded.
-     * @param {pc.callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
+     * @param {callbacks.HttpResponse} callback - The callback used when the response has returned. Passed (err, data)
      * where data is the response (format depends on response type: text, Object, ArrayBuffer, XML) and
      * err is the error code.
+     * @example
+     * pc.http.request("get", "http://example.com/", { "retry": true, "maxRetries": 5 }, function (err, response) {
+     *     console.log(response);
+     * });
      * @returns {XMLHttpRequest} The request object.
      */
-    request: function (method, url, options, callback) {
+    request(method, url, options, callback) {
         var uri, query, timestamp, postdata, xhr;
         var errored = false;
 
@@ -401,7 +438,7 @@ Object.assign(Http.prototype, {
         try {
             xhr.send(postdata);
         } catch (e) {
-            // DWE: Don't callback on exceptions as behaviour is inconsistent, e.g. cross-domain request errors don't throw an exception.
+            // DWE: Don't callback on exceptions as behavior is inconsistent, e.g. cross-domain request errors don't throw an exception.
             // Error callback should be called by xhr.onerror() callback instead.
             if (!errored) {
                 options.error(xhr.status, xhr, e);
@@ -410,9 +447,9 @@ Object.assign(Http.prototype, {
 
         // Return the request object as it can be handy for blocking calls
         return xhr;
-    },
+    }
 
-    _guessResponseType: function (url) {
+    _guessResponseType(url) {
         var uri = new URI(url);
         var ext = path.getExtension(uri.path);
 
@@ -425,9 +462,9 @@ Object.assign(Http.prototype, {
         }
 
         return Http.ResponseType.TEXT;
-    },
+    }
 
-    _isBinaryContentType: function (contentType) {
+    _isBinaryContentType(contentType) {
         var binTypes = [
             Http.ContentType.MP4,
             Http.ContentType.WAV,
@@ -443,21 +480,23 @@ Object.assign(Http.prototype, {
         }
 
         return false;
-    },
+    }
 
-    _onReadyStateChange: function (method, url, options, xhr) {
+    _onReadyStateChange(method, url, options, xhr) {
         if (xhr.readyState === 4) {
             switch (xhr.status) {
                 case 0: {
+                    // If status code 0, it is assumed that the browser has cancelled the request
 
-                    // If this is a local resource then continue (IOS) otherwise the request
-                    // didn't complete, possibly an exception or attempt to do cross-domain request
-                    if (url[0] != '/') {
+                    // Add support for running Chrome browsers in 'allow-file-access-from-file'
+                    // This is to allow for specialised programs and libraries such as CefSharp
+                    // which embed Chromium in the native app.
+                    if (xhr.responseURL && xhr.responseURL.startsWith('file:///')) {
+                        // Assume that any file loaded from disk is fine
                         this._onSuccess(method, url, options, xhr);
                     } else {
                         this._onError(method, url, options, xhr);
                     }
-
                     break;
                 }
                 case 200:
@@ -473,9 +512,9 @@ Object.assign(Http.prototype, {
                 }
             }
         }
-    },
+    }
 
-    _onSuccess: function (method, url, options, xhr) {
+    _onSuccess(method, url, options, xhr) {
         var response;
         var header;
         var contentType;
@@ -517,9 +556,9 @@ Object.assign(Http.prototype, {
         } catch (err) {
             options.callback(err);
         }
-    },
+    }
 
-    _onError: function (method, url, options, xhr) {
+    _onError(method, url, options, xhr) {
         if (options.retrying) {
             return;
         }
@@ -540,8 +579,8 @@ Object.assign(Http.prototype, {
             options.callback(xhr.status === 0 ? 'Network error' : xhr.status, null);
         }
     }
-});
+}
 
-var http = new Http();
+const http = new Http();
 
 export { http, Http };

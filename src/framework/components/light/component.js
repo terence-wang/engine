@@ -1,11 +1,11 @@
-import { Color } from '../../../core/color.js';
-
 import { math } from '../../../math/math.js';
+import { Color } from '../../../math/color.js';
 import { Vec4 } from '../../../math/vec4.js';
 
 import {
     BLUR_GAUSSIAN,
     LAYERID_WORLD,
+    LIGHTSHAPE_PUNCTUAL,
     LIGHTFALLOFF_LINEAR,
     MASK_BAKED, MASK_DYNAMIC, MASK_LIGHTMAP,
     SHADOW_PCF3,
@@ -16,11 +16,14 @@ import { Asset } from '../../../asset/asset.js';
 
 import { Component } from '../component.js';
 
+var _lightProps = [];
+var _lightPropsDefault = [];
+
 /**
  * @component
  * @class
- * @name pc.LightComponent
- * @augments pc.Component
+ * @name LightComponent
+ * @augments Component
  * @classdesc The Light Component enables the Entity to light the scene. There are three types
  * of light: directional, point and spot. Directional lights are global in that they are
  * considered to be infinitely far away and light the entire scene. Point and spot lights
@@ -28,8 +31,8 @@ import { Component } from '../component.js';
  * a point light where light is emitted in a cone rather than in all directions. Lights
  * also have the ability to cast shadows to add realism to your scenes.
  * @description Creates a new Light Component.
- * @param {pc.LightComponentSystem} system - The ComponentSystem that created this Component.
- * @param {pc.Entity} entity - The Entity that this Component is attached to.
+ * @param {LightComponentSystem} system - The ComponentSystem that created this Component.
+ * @param {Entity} entity - The Entity that this Component is attached to.
  * @example
  * // Add a pc.LightComponent to an entity
  * var entity = new pc.Entity();
@@ -49,7 +52,7 @@ import { Component } from '../component.js';
  * * "point": A light that illuminates in all directions from a point.
  * * "spot": A light that illuminates in all directions from a point and is bounded by a cone.
  * Defaults to "directional".
- * @property {pc.Color} color The Color of the light. The alpha component of the color is
+ * @property {Color} color The Color of the light. The alpha component of the color is
  * ignored. Defaults to white (1, 1, 1).
  * @property {number} intensity The brightness of the light. Defaults to 1.
  * @property {boolean} castShadows If enabled the light will cast shadows. Defaults to false.
@@ -68,12 +71,12 @@ import { Component } from '../component.js';
  * @property {number} outerConeAngle The angle at which the spotlight cone has faded
  * to nothing. The angle is specified in degrees. Affects spot lights only. Defaults
  * to 45.
- * @property {number} falloffMode Controls the rate at which a light attentuates from
+ * @property {number} falloffMode Controls the rate at which a light attenuates from
  * its position. Can be:
- * * {@link pc.LIGHTFALLOFF_LINEAR}: Linear.
- * * {@link pc.LIGHTFALLOFF_INVERSESQUARED}: Inverse squared.
- * Affects point and spot lights only. Defaults to pc.LIGHTFALLOFF_LINEAR.
- * @property {number} mask Defines a mask to determine which {@link pc.MeshInstance}s are
+ * * {@link LIGHTFALLOFF_LINEAR}: Linear.
+ * * {@link LIGHTFALLOFF_INVERSESQUARED}: Inverse squared.
+ * Affects point and spot lights only. Defaults to {@link LIGHTFALLOFF_LINEAR}.
+ * @property {number} mask Defines a mask to determine which {@link MeshInstance}s are
  * lit by this light. Defaults to 1.
  * @property {boolean} affectDynamic If enabled the light will affect non-lightmapped objects
  * @property {boolean} affectLightmapped If enabled the light will affect lightmapped objects
@@ -83,49 +86,198 @@ import { Component } from '../component.js';
  * Intersecting multiple lights with bakeDir=true may lead to incorrect look of specular/bump-mapping in the area of intersection.
  * The error is not always visible though, and highly scene-dependent.
  * @property {number} shadowUpdateMode Tells the renderer how often shadows must be updated for this light. Options:
- * * {@link pc.SHADOWUPDATE_NONE}: Don't render shadows.
- * * {@link pc.SHADOWUPDATE_THISFRAME}: Render shadows only once (then automatically switches to pc.SHADOWUPDATE_NONE).
- * * {@link pc.SHADOWUPDATE_REALTIME}: Render shadows every frame (default).
+ * * {@link SHADOWUPDATE_NONE}: Don't render shadows.
+ * * {@link SHADOWUPDATE_THISFRAME}: Render shadows only once (then automatically switches to {@link SHADOWUPDATE_NONE}.
+ * * {@link SHADOWUPDATE_REALTIME}: Render shadows every frame (default).
  * @property {number} shadowType Type of shadows being rendered by this light. Options:
- * * {@link pc.SHADOW_PCF3}: Render depth (color-packed on WebGL 1.0), can be used for PCF 3x3 sampling.
- * * {@link pc.SHADOW_VSM8}: Render packed variance shadow map. All shadow receivers must also cast shadows for this mode to work correctly.
- * * {@link pc.SHADOW_VSM16}: Render 16-bit exponential variance shadow map. Requires OES_texture_half_float extension. Falls back to pc.SHADOW_VSM8, if not supported.
- * * {@link pc.SHADOW_VSM32}: Render 32-bit exponential variance shadow map. Requires OES_texture_float extension. Falls back to pc.SHADOW_VSM16, if not supported.
- * * {@link pc.SHADOW_PCF5}: Render depth buffer only, can be used for hardware-accelerated PCF 5x5 sampling. Requires WebGL2. Falls back to pc.SHADOW_PCF3 on WebGL 1.0.
+ * * {@link SHADOW_PCF3}: Render depth (color-packed on WebGL 1.0), can be used for PCF 3x3 sampling.
+ * * {@link SHADOW_VSM8}: Render packed variance shadow map. All shadow receivers must also cast shadows for this mode to work correctly.
+ * * {@link SHADOW_VSM16}: Render 16-bit exponential variance shadow map. Requires OES_texture_half_float extension. Falls back to {@link SHADOW_VSM8}, if not supported.
+ * * {@link SHADOW_VSM32}: Render 32-bit exponential variance shadow map. Requires OES_texture_float extension. Falls back to {@link SHADOW_VSM16}, if not supported.
+ * * {@link SHADOW_PCF5}: Render depth buffer only, can be used for hardware-accelerated PCF 5x5 sampling. Requires WebGL2. Falls back to {@link SHADOW_PCF3} on WebGL 1.0.
  * @property {number} vsmBlurMode Blurring mode for variance shadow maps:
- * * {@link pc.BLUR_BOX}: Box filter.
- * * {@link pc.BLUR_GAUSSIAN}: Gaussian filter. May look smoother than box, but requires more samples.
+ * * {@link BLUR_BOX}: Box filter.
+ * * {@link BLUR_GAUSSIAN}: Gaussian filter. May look smoother than box, but requires more samples.
  * @property {number} vsmBlurSize Number of samples used for blurring a variance shadow map. Only uneven numbers work, even are incremented. Minimum value is 1, maximum is 25.
  * @property {number} cookieAsset Asset that has texture that will be assigned to cookie internally once asset resource is available.
- * @property {pc.Texture} cookie Projection texture. Must be 2D for spot and cubemap for point (ignored if incorrect type is used).
+ * @property {Texture} cookie Projection texture. Must be 2D for spot and cubemap for point (ignored if incorrect type is used).
  * @property {number} cookieIntensity Projection texture intensity (default is 1).
  * @property {boolean} cookieFalloff Toggle normal spotlight falloff when projection texture is used. When set to false, spotlight will work like a pure texture projector (only fading with distance). Default is false.
  * @property {string} cookieChannel Color channels of the projection texture to use. Can be "r", "g", "b", "a", "rgb" or any swizzled combination.
  * @property {number} cookieAngle Angle for spotlight cookie rotation.
- * @property {pc.Vec2} cookieScale Spotlight cookie scale.
- * @property {pc.Vec2} cookieOffset Spotlight cookie position offset.
+ * @property {Vec2} cookieScale Spotlight cookie scale.
+ * @property {Vec2} cookieOffset Spotlight cookie position offset.
  * @property {boolean} isStatic Mark light as non-movable (optimization)
- * @property {number[]} layers An array of layer IDs ({@link pc.Layer#id}) to which this light should belong.
+ * @property {number[]} layers An array of layer IDs ({@link Layer#id}) to which this light should belong.
  * Don't push/pop/splice or modify this array, if you want to change it - set a new one instead.
  */
-function LightComponent(system, entity) {
-    Component.call(this, system, entity);
+class LightComponent extends Component {
+    constructor(system, entity) {
+        super(system, entity);
 
-    this._cookieAsset = null;
-    this._cookieAssetId = null;
-    this._cookieAssetAdd = false;
-    this._cookieMatrix = null;
+        this._cookieAsset = null;
+        this._cookieAssetId = null;
+        this._cookieAssetAdd = false;
+        this._cookieMatrix = null;
+    }
+
+    addLightToLayers() {
+        var layer;
+        for (var i = 0; i < this.layers.length; i++) {
+            layer = this.system.app.scene.layers.getLayerById(this.layers[i]);
+            if (!layer) continue;
+            layer.addLight(this);
+        }
+    }
+
+    removeLightFromLayers() {
+        var layer;
+        for (var i = 0; i < this.layers.length; i++) {
+            layer = this.system.app.scene.layers.getLayerById(this.layers[i]);
+            if (!layer) continue;
+            layer.removeLight(this);
+        }
+    }
+
+    onLayersChanged(oldComp, newComp) {
+        if (this.enabled && this.entity.enabled) {
+            this.addLightToLayers();
+        }
+        oldComp.off("add", this.onLayerAdded, this);
+        oldComp.off("remove", this.onLayerRemoved, this);
+        newComp.on("add", this.onLayerAdded, this);
+        newComp.on("remove", this.onLayerRemoved, this);
+    }
+
+    onLayerAdded(layer) {
+        var index = this.layers.indexOf(layer.id);
+        if (index < 0) return;
+        if (this.enabled && this.entity.enabled) {
+            layer.addLight(this);
+        }
+    }
+
+    onLayerRemoved(layer) {
+        var index = this.layers.indexOf(layer.id);
+        if (index < 0) return;
+        layer.removeLight(this);
+    }
+
+    refreshProperties() {
+        var name;
+        for (var i = 0; i < _lightProps.length; i++) {
+            name = _lightProps[i];
+
+            /* eslint-disable no-self-assign */
+            this[name] = this[name];
+            /* eslint-enable no-self-assign */
+        }
+        if (this.enabled && this.entity.enabled)
+            this.onEnable();
+    }
+
+    updateShadow() {
+        this.light.updateShadow();
+    }
+
+    onCookieAssetSet() {
+        var forceLoad = false;
+
+        if (this._cookieAsset.type === 'cubemap' && !this._cookieAsset.loadFaces) {
+            this._cookieAsset.loadFaces = true;
+            forceLoad = true;
+        }
+
+        if (!this._cookieAsset.resource || forceLoad)
+            this.system.app.assets.load(this._cookieAsset);
+
+        if (this._cookieAsset.resource)
+            this.onCookieAssetLoad();
+    }
+
+    onCookieAssetAdd(asset) {
+        if (this._cookieAssetId !== asset.id)
+            return;
+
+        this._cookieAsset = asset;
+
+        if (this.light.enabled)
+            this.onCookieAssetSet();
+
+        this._cookieAsset.on('load', this.onCookieAssetLoad, this);
+        this._cookieAsset.on('remove', this.onCookieAssetRemove, this);
+    }
+
+    onCookieAssetLoad() {
+        if (!this._cookieAsset || !this._cookieAsset.resource)
+            return;
+
+        this.cookie = this._cookieAsset.resource;
+    }
+
+    onCookieAssetRemove() {
+        if (!this._cookieAssetId)
+            return;
+
+        if (this._cookieAssetAdd) {
+            this.system.app.assets.off('add:' + this._cookieAssetId, this.onCookieAssetAdd, this);
+            this._cookieAssetAdd = false;
+        }
+
+        if (this._cookieAsset) {
+            this._cookieAsset.off('load', this.onCookieAssetLoad, this);
+            this._cookieAsset.off('remove', this.onCookieAssetRemove, this);
+            this._cookieAsset = null;
+        }
+
+        this.cookie = null;
+    }
+
+    onEnable() {
+        this.light.enabled = true;
+
+        this.system.app.scene.on("set:layers", this.onLayersChanged, this);
+        if (this.system.app.scene.layers) {
+            this.system.app.scene.layers.on("add", this.onLayerAdded, this);
+            this.system.app.scene.layers.on("remove", this.onLayerRemoved, this);
+        }
+
+        if (this.enabled && this.entity.enabled) {
+            this.addLightToLayers();
+        }
+
+        if (this._cookieAsset && !this.cookie)
+            this.onCookieAssetSet();
+    }
+
+    onDisable() {
+        this.light.enabled = false;
+
+        this.system.app.scene.off("set:layers", this.onLayersChanged, this);
+        if (this.system.app.scene.layers) {
+            this.system.app.scene.layers.off("add", this.onLayerAdded, this);
+            this.system.app.scene.layers.off("remove", this.onLayerRemoved, this);
+        }
+
+        this.removeLightFromLayers();
+    }
+
+    onRemove() {
+        // remove from layers
+        this.onDisable();
+
+        // destroy light node
+        this.light.destroy();
+
+        // remove cookie asset events
+        this.cookieAsset = null;
+    }
 }
-LightComponent.prototype = Object.create(Component.prototype);
-LightComponent.prototype.constructor = LightComponent;
 
-var _props = [];
-var _propsDefault = [];
-
-var _defineProperty = function (name, defaultValue, setFunc, skipEqualsCheck) {
+function _defineProperty(name, defaultValue, setFunc, skipEqualsCheck) {
     var c = LightComponent.prototype;
-    _props.push(name);
-    _propsDefault.push(defaultValue);
+    _lightProps.push(name);
+    _lightPropsDefault.push(defaultValue);
 
     Object.defineProperty(c, name, {
         get: function () {
@@ -140,9 +292,9 @@ var _defineProperty = function (name, defaultValue, setFunc, skipEqualsCheck) {
         },
         configurable: true
     });
-};
+}
 
-var _defineProps = function () {
+function _defineProps() {
     _defineProperty("enabled", true, function (newValue, oldValue) {
         this.onSetEnabled(null, oldValue, newValue);
     });
@@ -158,6 +310,9 @@ var _defineProps = function () {
     }, true);
     _defineProperty("intensity", 1, function (newValue, oldValue) {
         this.light.intensity = newValue;
+    });
+    _defineProperty("shape", LIGHTSHAPE_PUNCTUAL, function (newValue, oldValue) {
+        this.light.shape = newValue;
     });
     _defineProperty("castShadows", false, function (newValue, oldValue) {
         this.light.castShadows = newValue;
@@ -277,6 +432,7 @@ var _defineProps = function () {
         } else {
             this.light.mask &= ~MASK_DYNAMIC;
         }
+        this.light.layersDirty();
     });
     _defineProperty("affectLightmapped", false, function (newValue, oldValue) {
         if (newValue) {
@@ -317,163 +473,8 @@ var _defineProps = function () {
             }
         }
     });
-};
+}
+
 _defineProps();
-
-
-Object.assign(LightComponent.prototype, {
-
-    addLightToLayers: function () {
-        var layer;
-        for (var i = 0; i < this.layers.length; i++) {
-            layer = this.system.app.scene.layers.getLayerById(this.layers[i]);
-            if (!layer) continue;
-            layer.addLight(this);
-        }
-    },
-
-    removeLightFromLayers: function () {
-        var layer;
-        for (var i = 0; i < this.layers.length; i++) {
-            layer = this.system.app.scene.layers.getLayerById(this.layers[i]);
-            if (!layer) continue;
-            layer.removeLight(this);
-        }
-    },
-
-    onLayersChanged: function (oldComp, newComp) {
-        if (this.enabled && this.entity.enabled) {
-            this.addLightToLayers();
-        }
-        oldComp.off("add", this.onLayerAdded, this);
-        oldComp.off("remove", this.onLayerRemoved, this);
-        newComp.on("add", this.onLayerAdded, this);
-        newComp.on("remove", this.onLayerRemoved, this);
-    },
-
-    onLayerAdded: function (layer) {
-        var index = this.layers.indexOf(layer.id);
-        if (index < 0) return;
-        if (this.enabled && this.entity.enabled) {
-            layer.addLight(this);
-        }
-    },
-
-    onLayerRemoved: function (layer) {
-        var index = this.layers.indexOf(layer.id);
-        if (index < 0) return;
-        layer.removeLight(this);
-    },
-
-    refreshProperties: function () {
-        var name;
-        for (var i = 0; i < _props.length; i++) {
-            name = _props[i];
-
-            /* eslint-disable no-self-assign */
-            this[name] = this[name];
-            /* eslint-enable no-self-assign */
-        }
-        if (this.enabled && this.entity.enabled)
-            this.onEnable();
-    },
-
-    updateShadow: function () {
-        this.light.updateShadow();
-    },
-
-    onCookieAssetSet: function () {
-        var forceLoad = false;
-
-        if (this._cookieAsset.type === 'cubemap' && !this._cookieAsset.loadFaces) {
-            this._cookieAsset.loadFaces = true;
-            forceLoad = true;
-        }
-
-        if (!this._cookieAsset.resource || forceLoad)
-            this.system.app.assets.load(this._cookieAsset);
-
-        if (this._cookieAsset.resource)
-            this.onCookieAssetLoad();
-    },
-
-    onCookieAssetAdd: function (asset) {
-        if (this._cookieAssetId !== asset.id)
-            return;
-
-        this._cookieAsset = asset;
-
-        if (this.light.enabled)
-            this.onCookieAssetSet();
-
-        this._cookieAsset.on('load', this.onCookieAssetLoad, this);
-        this._cookieAsset.on('remove', this.onCookieAssetRemove, this);
-    },
-
-    onCookieAssetLoad: function () {
-        if (!this._cookieAsset || !this._cookieAsset.resource)
-            return;
-
-        this.cookie = this._cookieAsset.resource;
-    },
-
-    onCookieAssetRemove: function () {
-        if (!this._cookieAssetId)
-            return;
-
-        if (this._cookieAssetAdd) {
-            this.system.app.assets.off('add:' + this._cookieAssetId, this.onCookieAssetAdd, this);
-            this._cookieAssetAdd = false;
-        }
-
-        if (this._cookieAsset) {
-            this._cookieAsset.off('load', this.onCookieAssetLoad, this);
-            this._cookieAsset.off('remove', this.onCookieAssetRemove, this);
-            this._cookieAsset = null;
-        }
-
-        this.cookie = null;
-    },
-
-    onEnable: function () {
-        this.light.enabled = true;
-
-        this.system.app.scene.on("set:layers", this.onLayersChanged, this);
-        if (this.system.app.scene.layers) {
-            this.system.app.scene.layers.on("add", this.onLayerAdded, this);
-            this.system.app.scene.layers.on("remove", this.onLayerRemoved, this);
-        }
-
-        if (this.enabled && this.entity.enabled) {
-            this.addLightToLayers();
-        }
-
-        if (this._cookieAsset && !this.cookie)
-            this.onCookieAssetSet();
-    },
-
-    onDisable: function () {
-        this.light.enabled = false;
-
-        this.system.app.scene.off("set:layers", this.onLayersChanged, this);
-        if (this.system.app.scene.layers) {
-            this.system.app.scene.layers.off("add", this.onLayerAdded, this);
-            this.system.app.scene.layers.off("remove", this.onLayerRemoved, this);
-        }
-
-        this.removeLightFromLayers();
-    },
-
-    onRemove: function () {
-        // destroy light node
-        this.light.destroy();
-        // remove cookie asset events
-        this.cookieAsset = null;
-    }
-
-});
-
-var _lightProps = _props;
-var _lightPropsDefault = _propsDefault;
 
 export { _lightProps, _lightPropsDefault, LightComponent };

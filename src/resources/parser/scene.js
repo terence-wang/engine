@@ -1,18 +1,25 @@
 import { Entity } from '../../framework/entity.js';
 
 import { TemplateUtils } from '../../templates/template-utils.js';
+import { CompressUtils } from '../../compress/compress-utils';
+import { Decompress } from '../../compress/decompress';
 
-function SceneParser(app, isTemplate) {
-    this._app = app;
+class SceneParser {
+    constructor(app, isTemplate) {
+        this._app = app;
 
-    this._isTemplate = isTemplate;
-}
+        this._isTemplate = isTemplate;
+    }
 
-Object.assign(SceneParser.prototype, {
-    parse: function (data) {
+    parse(data) {
         var entities = {};
-        var id, i;
+        var id, i, curEnt;
         var parent = null;
+
+        var compressed = data.compressedFormat;
+        if (compressed) {
+            data.entities = new Decompress(data.entities, compressed).run();
+        }
 
         if (data.collapsedInstances) {
             this._addCollapsedToEntities(this._app, data);
@@ -20,45 +27,45 @@ Object.assign(SceneParser.prototype, {
 
         // instantiate entities
         for (id in data.entities) {
-            entities[id] = this._createEntity(data.entities[id]);
-            if (data.entities[id].parent === null) {
-                parent = entities[id];
+            var curData = data.entities[id];
+            curEnt = this._createEntity(curData, compressed);
+            entities[id] = curEnt;
+            if (curData.parent === null) {
+                parent = curEnt;
             }
         }
 
         // put entities into hierarchy
         for (id in data.entities) {
-            var l = data.entities[id].children.length;
-            for (i = 0; i < l; i++) {
-                // pop resource id off the end of the array
-                var resource_id = data.entities[id].children[i];
-                if (entities[resource_id]) {
-                    // push entity on the front of the array
-                    entities[id].addChild(entities[resource_id]);
+            curEnt = entities[id];
+            var children = data.entities[id].children;
+            var len = children.length;
+            for (i = 0; i < len; i++) {
+                var childEnt = entities[children[i]];
+                if (childEnt) {
+                    curEnt.addChild(childEnt);
                 }
             }
         }
 
         this._openComponentData(parent, data.entities);
 
+        delete data.compressedFormat;
+
         return parent;
-    },
+    }
 
-    _createEntity: function (data) {
+    _createEntity(data, compressed) {
         var entity = new Entity();
-
-        var p = data.position;
-        var r = data.rotation;
-        var s = data.scale;
 
         entity.name = data.name;
         entity.setGuid(data.resource_id);
-        entity.setLocalPosition(p[0], p[1], p[2]);
-        entity.setLocalEulerAngles(r[0], r[1], r[2]);
-        entity.setLocalScale(s[0], s[1], s[2]);
+        this._setPosRotScale(entity, data, compressed);
         entity._enabled = data.enabled !== undefined ? data.enabled : true;
 
-        if (!this._isTemplate) {
+        if (this._isTemplate) {
+            entity._template = true;
+        } else {
             entity._enabledInHierarchy = entity._enabled;
         }
 
@@ -77,9 +84,24 @@ Object.assign(SceneParser.prototype, {
         }
 
         return entity;
-    },
+    }
 
-    _openComponentData: function (entity, entities) {
+    _setPosRotScale(entity, data, compressed) {
+        if (compressed) {
+            CompressUtils.setCompressedPRS(entity, data, compressed);
+
+        } else {
+            var p = data.position;
+            var r = data.rotation;
+            var s = data.scale;
+
+            entity.setLocalPosition(p[0], p[1], p[2]);
+            entity.setLocalEulerAngles(r[0], r[1], r[2]);
+            entity.setLocalScale(s[0], s[1], s[2]);
+        }
+    }
+
+    _openComponentData(entity, entities) {
         // Create components in order
         var systemsList = this._app.systems.list;
 
@@ -101,9 +123,9 @@ Object.assign(SceneParser.prototype, {
         }
 
         return entity;
-    },
+    }
 
-    _addCollapsedToEntities: function (app, data) {
+    _addCollapsedToEntities(app, data) {
         data.collapsedInstances.forEach(function (h) {
             var expanded = TemplateUtils.expandTemplateEntities(
                 app, h.instanceEntities);
@@ -111,6 +133,6 @@ Object.assign(SceneParser.prototype, {
             Object.assign(data.entities, expanded);
         });
     }
-});
+}
 
 export { SceneParser };

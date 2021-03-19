@@ -1,6 +1,5 @@
-import { Color } from '../../../core/color.js';
-
 import { math } from '../../../math/math.js';
+import { Color } from '../../../math/color.js';
 import { Vec2 } from '../../../math/vec2.js';
 import { Vec4 } from '../../../math/vec4.js';
 
@@ -8,7 +7,7 @@ import {
     LAYERID_WORLD,
     SPRITE_RENDERMODE_SLICED, SPRITE_RENDERMODE_TILED
 } from '../../../scene/constants.js';
-import { BatchGroup } from '../../../scene/batching.js';
+import { BatchGroup } from '../../../scene/batching/batch-group.js';
 import { GraphNode } from '../../../scene/graph-node.js';
 import { MeshInstance } from '../../../scene/mesh-instance.js';
 import { Model } from '../../../scene/model.js';
@@ -18,103 +17,101 @@ import { Component } from '../component.js';
 import { SPRITETYPE_SIMPLE, SPRITETYPE_ANIMATED } from './constants.js';
 import { SpriteAnimationClip } from './sprite-animation-clip.js';
 
-var PARAM_EMISSIVE_MAP = 'texture_emissiveMap';
-var PARAM_OPACITY_MAP = 'texture_opacityMap';
-var PARAM_EMISSIVE = 'material_emissive';
-var PARAM_OPACITY = 'material_opacity';
-var PARAM_INNER_OFFSET = 'innerOffset';
-var PARAM_OUTER_SCALE = 'outerScale';
-var PARAM_ATLAS_RECT = 'atlasRect';
+const PARAM_EMISSIVE_MAP = 'texture_emissiveMap';
+const PARAM_OPACITY_MAP = 'texture_opacityMap';
+const PARAM_EMISSIVE = 'material_emissive';
+const PARAM_OPACITY = 'material_opacity';
+const PARAM_INNER_OFFSET = 'innerOffset';
+const PARAM_OUTER_SCALE = 'outerScale';
+const PARAM_ATLAS_RECT = 'atlasRect';
 
 /**
  * @component
  * @class
- * @name pc.SpriteComponent
- * @augments pc.Component
+ * @name SpriteComponent
+ * @augments Component
  * @classdesc Enables an Entity to render a simple static sprite or sprite animations.
- * @param {pc.SpriteComponentSystem} system - The ComponentSystem that created this Component.
- * @param {pc.Entity} entity - The Entity that this Component is attached to.
+ * @param {SpriteComponentSystem} system - The ComponentSystem that created this Component.
+ * @param {Entity} entity - The Entity that this Component is attached to.
  * @property {string} type The type of the SpriteComponent. Can be:
  *
- * * {@link pc.SPRITETYPE_SIMPLE}: The component renders a single frame from a sprite asset.
- * * {@link pc.SPRITETYPE_ANIMATED}: The component can play sprite animation clips.
+ * * {@link SPRITETYPE_SIMPLE}: The component renders a single frame from a sprite asset.
+ * * {@link SPRITETYPE_ANIMATED}: The component can play sprite animation clips.
  *
  * @property {number} frame The frame counter of the sprite. Specifies which frame from the current sprite asset to render.
- * @property {number} spriteAsset The id of the sprite asset to render. Only works for {@link pc.SPRITETYPE_SIMPLE} types.
- * @property {pc.Sprite} sprite The current sprite.
+ * @property {number} spriteAsset The id of the sprite asset to render. Only works for {@link SPRITETYPE_SIMPLE} types.
+ * @property {Sprite} sprite The current sprite.
  * @property {number} width The width of the sprite when rendering using 9-Slicing. The width and height are only used when the render mode of the sprite asset is Sliced or Tiled.
  * @property {number} height The height of the sprite when rendering using 9-Slicing. The width and height are only used when the render mode of the sprite asset is Sliced or Tiled.
- * @property {pc.Color} color The color tint of the sprite.
+ * @property {Color} color The color tint of the sprite.
  * @property {number} opacity The opacity of the sprite.
  * @property {boolean} flipX Flip the X axis when rendering a sprite.
  * @property {boolean} flipY Flip the Y axis when rendering a sprite.
- * @property {object} clips A dictionary that contains {@link pc.SpriteAnimationClip}s.
- * @property {pc.SpriteAnimationClip} currentClip The current clip being played.
+ * @property {object} clips A dictionary that contains {@link SpriteAnimationClip}s.
+ * @property {SpriteAnimationClip} currentClip The current clip being played.
  * @property {number} speed A global speed modifier used when playing sprite animation clips.
- * @property {number} batchGroupId Assign sprite to a specific batch group (see {@link pc.BatchGroup}). Default value is -1 (no group).
+ * @property {number} batchGroupId Assign sprite to a specific batch group (see {@link BatchGroup}). Default value is -1 (no group).
  * @property {string} autoPlayClip The name of the clip to play automatically when the component is enabled and the clip exists.
- * @property {number[]} layers An array of layer IDs ({@link pc.Layer#id}) to which this sprite should belong.
- * @property {number} drawOrder The draw order of the component. A higher value means that the component will be rendered on top of other components in the same layer.
+ * @property {number[]} layers An array of layer IDs ({@link Layer#id}) to which this sprite should belong.
+ * @property {number} drawOrder The draw order of the component. A higher value means that the component will be rendered on top of other components in the same layer. This is not used unless the layer's sort order is set to {@link SORTMODE_MANUAL}.
  */
-var SpriteComponent = function SpriteComponent(system, entity) {
-    Component.call(this, system, entity);
+class SpriteComponent extends Component {
+    constructor(system, entity) {
+        super(system, entity);
 
-    this._type = SPRITETYPE_SIMPLE;
-    this._material = system.defaultMaterial;
-    this._color = new Color(1, 1, 1, 1);
-    this._colorUniform = new Float32Array(3);
-    this._speed = 1;
-    this._flipX = false;
-    this._flipY = false;
-    this._width = 1;
-    this._height = 1;
+        this._type = SPRITETYPE_SIMPLE;
+        this._material = system.defaultMaterial;
+        this._color = new Color(1, 1, 1, 1);
+        this._colorUniform = new Float32Array(3);
+        this._speed = 1;
+        this._flipX = false;
+        this._flipY = false;
+        this._width = 1;
+        this._height = 1;
 
-    this._drawOrder = 0;
-    this._layers = [LAYERID_WORLD]; // assign to the default world layer
+        this._drawOrder = 0;
+        this._layers = [LAYERID_WORLD]; // assign to the default world layer
 
-    // 9-slicing
-    this._outerScale = new Vec2(1, 1);
-    this._outerScaleUniform = new Float32Array(2);
-    this._innerOffset = new Vec4();
-    this._innerOffsetUniform = new Float32Array(4);
-    this._atlasRect = new Vec4();
-    this._atlasRectUniform = new Float32Array(4);
+        // 9-slicing
+        this._outerScale = new Vec2(1, 1);
+        this._outerScaleUniform = new Float32Array(2);
+        this._innerOffset = new Vec4();
+        this._innerOffsetUniform = new Float32Array(4);
+        this._atlasRect = new Vec4();
+        this._atlasRectUniform = new Float32Array(4);
 
-    // batch groups
-    this._batchGroupId = -1;
-    this._batchGroup = null;
+        // batch groups
+        this._batchGroupId = -1;
+        this._batchGroup = null;
 
-    // node / meshinstance
-    this._node = new GraphNode();
-    this._model = new Model();
-    this._model.graph = this._node;
-    this._meshInstance = null;
-    entity.addChild(this._model.graph);
-    this._model._entity = entity;
-    this._updateAabbFunc = this._updateAabb.bind(this);
+        // node / meshinstance
+        this._node = new GraphNode();
+        this._model = new Model();
+        this._model.graph = this._node;
+        this._meshInstance = null;
+        entity.addChild(this._model.graph);
+        this._model._entity = entity;
+        this._updateAabbFunc = this._updateAabb.bind(this);
 
-    this._addedModel = false;
+        this._addedModel = false;
 
-    // animated sprites
-    this._autoPlayClip = null;
+        // animated sprites
+        this._autoPlayClip = null;
 
-    this._clips = {};
+        this._clips = {};
 
-    // create default clip for simple sprite type
-    this._defaultClip = new SpriteAnimationClip(this, {
-        name: this.entity.name,
-        fps: 0,
-        loop: false,
-        spriteAsset: null
-    });
+        // create default clip for simple sprite type
+        this._defaultClip = new SpriteAnimationClip(this, {
+            name: this.entity.name,
+            fps: 0,
+            loop: false,
+            spriteAsset: null
+        });
 
-    this._currentClip = this._defaultClip;
-};
-SpriteComponent.prototype = Object.create(Component.prototype);
-SpriteComponent.prototype.constructor = SpriteComponent;
+        this._currentClip = this._defaultClip;
+    }
 
-Object.assign(SpriteComponent.prototype, {
-    onEnable: function () {
+    onEnable() {
         var app = this.system.app;
         var scene = app.scene;
 
@@ -131,9 +128,9 @@ Object.assign(SpriteComponent.prototype, {
         if (this._batchGroupId >= 0) {
             app.batcher.insert(BatchGroup.SPRITE, this._batchGroupId, this.entity);
         }
-    },
+    }
 
-    onDisable: function () {
+    onDisable() {
         var app = this.system.app;
         var scene = app.scene;
 
@@ -150,9 +147,9 @@ Object.assign(SpriteComponent.prototype, {
         if (this._batchGroupId >= 0) {
             app.batcher.remove(BatchGroup.SPRITE, this._batchGroupId, this.entity);
         }
-    },
+    }
 
-    onDestroy: function () {
+    onDestroy() {
         this._currentClip = null;
 
         if (this._defaultClip) {
@@ -179,9 +176,9 @@ Object.assign(SpriteComponent.prototype, {
             this._meshInstance.mesh = null;
             this._meshInstance = null;
         }
-    },
+    }
 
-    _showModel: function () {
+    _showModel() {
         if (this._addedModel) return;
         if (!this._meshInstance) return;
 
@@ -198,9 +195,9 @@ Object.assign(SpriteComponent.prototype, {
         }
 
         this._addedModel = true;
-    },
+    }
 
-    _hideModel: function () {
+    _hideModel() {
         if (!this._addedModel || !this._meshInstance) return;
 
         var i;
@@ -216,10 +213,10 @@ Object.assign(SpriteComponent.prototype, {
         }
 
         this._addedModel = false;
-    },
+    }
 
     // Set the desired mesh on the mesh instance
-    _showFrame: function (frame) {
+    _showFrame(frame) {
         if (!this.sprite) return;
 
         var mesh = this.sprite.meshes[frame];
@@ -244,7 +241,7 @@ Object.assign(SpriteComponent.prototype, {
 
         // create mesh instance if it doesn't exist yet
         if (!this._meshInstance) {
-            this._meshInstance = new MeshInstance(this._node, mesh, this._material);
+            this._meshInstance = new MeshInstance(mesh, this._material, this._node);
             this._meshInstance.castShadow = false;
             this._meshInstance.receiveShadow = false;
             this._meshInstance.drawOrder = this._drawOrder;
@@ -331,9 +328,9 @@ Object.assign(SpriteComponent.prototype, {
         }
 
         this._updateTransform();
-    },
+    }
 
-    _updateTransform: function () {
+    _updateTransform() {
         // flip
         var scaleX = this.flipX ? -1 : 1;
         var scaleY = this.flipY ? -1 : 1;
@@ -379,10 +376,9 @@ Object.assign(SpriteComponent.prototype, {
 
             // update outer scale
             if (this._meshInstance) {
-                // use outerScale in ALL passes (depth, picker, etc) so the shape is correct
                 this._outerScaleUniform[0] = this._outerScale.x;
                 this._outerScaleUniform[1] = this._outerScale.y;
-                this._meshInstance.setParameter(PARAM_OUTER_SCALE, this._outerScaleUniform, 0xFFFFFFFF);
+                this._meshInstance.setParameter(PARAM_OUTER_SCALE, this._outerScaleUniform);
             }
         }
 
@@ -390,10 +386,10 @@ Object.assign(SpriteComponent.prototype, {
         this._node.setLocalScale(scaleX, scaleY, 1);
         // pivot
         this._node.setLocalPosition(posX, posY, 0);
-    },
+    }
 
     // updates AABB while 9-slicing
-    _updateAabb: function (aabb) {
+    _updateAabb(aabb) {
         // pivot
         aabb.center.set(0, 0, 0);
         // size
@@ -401,9 +397,9 @@ Object.assign(SpriteComponent.prototype, {
         // world transform
         aabb.setFromTransformedAabb(aabb, this._node.getWorldTransform());
         return aabb;
-    },
+    }
 
-    _tryAutoPlay: function () {
+    _tryAutoPlay() {
         if (!this._autoPlayClip) return;
         if (this.type !== SPRITETYPE_ANIMATED) return;
 
@@ -414,9 +410,9 @@ Object.assign(SpriteComponent.prototype, {
                 this.play(clip.name);
             }
         }
-    },
+    }
 
-    _onLayersChanged: function (oldComp, newComp) {
+    _onLayersChanged(oldComp, newComp) {
         oldComp.off("add", this.onLayerAdded, this);
         oldComp.off("remove", this.onLayerRemoved, this);
         newComp.on("add", this.onLayerAdded, this);
@@ -425,46 +421,46 @@ Object.assign(SpriteComponent.prototype, {
         if (this.enabled && this.entity.enabled) {
             this._showModel();
         }
-    },
+    }
 
-    _onLayerAdded: function (layer) {
+    _onLayerAdded(layer) {
         var index = this.layers.indexOf(layer.id);
         if (index < 0) return;
 
         if (this._addedModel && this.enabled && this.entity.enabled && this._meshInstance) {
             layer.addMeshInstances([this._meshInstance]);
         }
-    },
+    }
 
-    _onLayerRemoved: function (layer) {
+    _onLayerRemoved(layer) {
         if (!this._meshInstance) return;
 
         var index = this.layers.indexOf(layer.id);
         if (index < 0) return;
         layer.removeMeshInstances([this._meshInstance]);
-    },
+    }
 
-    removeModelFromLayers: function () {
+    removeModelFromLayers() {
         var layer;
         for (var i = 0; i < this.layers.length; i++) {
             layer = this.system.app.scene.layers.getLayerById(this.layers[i]);
             if (!layer) continue;
             layer.removeMeshInstances([this._meshInstance]);
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.SpriteComponent#addClip
-     * @description Creates and adds a new {@link pc.SpriteAnimationClip} to the component's clips.
+     * @name SpriteComponent#addClip
+     * @description Creates and adds a new {@link SpriteAnimationClip} to the component's clips.
      * @param {object} data - Data for the new animation clip.
      * @param {string} [data.name] - The name of the new animation clip.
      * @param {number} [data.fps] - Frames per second for the animation clip.
      * @param {object} [data.loop] - Whether to loop the animation clip.
      * @param {number} [data.spriteAsset] - The id of the sprite asset that this clip will play.
-     * @returns {pc.SpriteAnimationClip} The new clip that was added.
+     * @returns {SpriteAnimationClip} The new clip that was added.
      */
-    addClip: function (data) {
+    addClip(data) {
         var clip = new SpriteAnimationClip(this, {
             name: data.name,
             fps: data.fps,
@@ -478,37 +474,37 @@ Object.assign(SpriteComponent.prototype, {
             this._tryAutoPlay();
 
         return clip;
-    },
+    }
 
     /**
      * @function
-     * @name pc.SpriteComponent#removeClip
+     * @name SpriteComponent#removeClip
      * @description Removes a clip by name.
      * @param {string} name - The name of the animation clip to remove.
      */
-    removeClip: function (name) {
+    removeClip(name) {
         delete this._clips[name];
-    },
+    }
 
     /**
      * @function
-     * @name pc.SpriteComponent#clip
+     * @name SpriteComponent#clip
      * @description Get an animation clip by name.
      * @param {string} name - The name of the clip.
-     * @returns {pc.SpriteAnimationClip} The clip.
+     * @returns {SpriteAnimationClip} The clip.
      */
-    clip: function (name) {
+    clip(name) {
         return this._clips[name];
-    },
+    }
 
     /**
      * @function
-     * @name pc.SpriteComponent#play
+     * @name SpriteComponent#play
      * @description Plays a sprite animation clip by name. If the animation clip is already playing then this will do nothing.
      * @param {string} name - The name of the clip to play.
-     * @returns {pc.SpriteAnimationClip} The clip that started playing.
+     * @returns {SpriteAnimationClip} The clip that started playing.
      */
-    play: function (name) {
+    play(name) {
         var clip = this._clips[name];
 
         var current = this._currentClip;
@@ -528,52 +524,50 @@ Object.assign(SpriteComponent.prototype, {
         }
 
         return clip;
-    },
+    }
 
     /**
      * @function
-     * @name pc.SpriteComponent#pause
+     * @name SpriteComponent#pause
      * @description Pauses the current animation clip.
      */
-    pause: function () {
+    pause() {
         if (this._currentClip === this._defaultClip) return;
 
         if (this._currentClip.isPlaying) {
             this._currentClip.pause();
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.SpriteComponent#resume
+     * @name SpriteComponent#resume
      * @description Resumes the current paused animation clip.
      */
-    resume: function () {
+    resume() {
         if (this._currentClip === this._defaultClip) return;
 
         if (this._currentClip.isPaused) {
             this._currentClip.resume();
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.SpriteComponent#stop
+     * @name SpriteComponent#stop
      * @description Stops the current animation clip and resets it to the first frame.
      */
-    stop: function () {
+    stop() {
         if (this._currentClip === this._defaultClip) return;
 
         this._currentClip.stop();
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "type", {
-    get: function () {
+    get type() {
         return this._type;
-    },
+    }
 
-    set: function (value) {
+    set type(value) {
         if (this._type === value)
             return;
 
@@ -606,54 +600,48 @@ Object.defineProperty(SpriteComponent.prototype, "type", {
             }
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "frame", {
-    get: function () {
+    get frame() {
         return this._currentClip.frame;
-    },
+    }
 
-    set: function (value) {
+    set frame(value) {
         this._currentClip.frame = value;
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "spriteAsset", {
-    get: function () {
+    get spriteAsset() {
         return this._defaultClip._spriteAsset;
-    },
-    set: function (value) {
+    }
+
+    set spriteAsset(value) {
         this._defaultClip.spriteAsset = value;
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "sprite", {
-    get: function () {
+    get sprite() {
         return this._currentClip.sprite;
-    },
-    set: function (value) {
+    }
+
+    set sprite(value) {
         this._currentClip.sprite = value;
     }
-});
 
-// (private) {pc.Material} material The material used to render a sprite.
-Object.defineProperty(SpriteComponent.prototype, "material", {
-    get: function () {
+    // (private) {pc.Material} material The material used to render a sprite.
+    get material() {
         return this._material;
-    },
-    set: function (value) {
+    }
+
+    set material(value) {
         this._material = value;
         if (this._meshInstance) {
             this._meshInstance.material = value;
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "color", {
-    get: function () {
+    get color() {
         return this._color;
-    },
-    set: function (value) {
+    }
+
+    set color(value) {
         this._color.r = value.r;
         this._color.g = value.g;
         this._color.b = value.b;
@@ -665,25 +653,23 @@ Object.defineProperty(SpriteComponent.prototype, "color", {
             this._meshInstance.setParameter(PARAM_EMISSIVE, this._colorUniform);
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "opacity", {
-    get: function () {
+    get opacity() {
         return this._color.a;
-    },
-    set: function (value) {
+    }
+
+    set opacity(value) {
         this._color.a = value;
         if (this._meshInstance) {
             this._meshInstance.setParameter(PARAM_OPACITY, value);
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "clips", {
-    get: function () {
+    get clips() {
         return this._clips;
-    },
-    set: function (value) {
+    }
+
+    set clips(value) {
         var name, key;
 
         // if value is null remove all clips
@@ -736,52 +722,46 @@ Object.defineProperty(SpriteComponent.prototype, "clips", {
             this._hideModel();
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "currentClip", {
-    get: function () {
+    get currentClip() {
         return this._currentClip;
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "speed", {
-    get: function () {
+    get speed() {
         return this._speed;
-    },
-    set: function (value) {
+    }
+
+    set speed(value) {
         this._speed = value;
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "flipX", {
-    get: function () {
+    get flipX() {
         return this._flipX;
-    },
-    set: function (value) {
+    }
+
+    set flipX(value) {
         if (this._flipX === value) return;
 
         this._flipX = value;
         this._updateTransform();
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "flipY", {
-    get: function () {
+    get flipY() {
         return this._flipY;
-    },
-    set: function (value) {
+    }
+
+    set flipY(value) {
         if (this._flipY === value) return;
 
         this._flipY = value;
         this._updateTransform();
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "width", {
-    get: function () {
+    get width() {
         return this._width;
-    },
-    set: function (value) {
+    }
+
+    set width(value) {
         if (value === this._width) return;
 
         this._width = value;
@@ -791,13 +771,12 @@ Object.defineProperty(SpriteComponent.prototype, "width", {
             this._updateTransform();
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "height", {
-    get: function () {
+    get height() {
         return this._height;
-    },
-    set: function (value) {
+    }
+
+    set height(value) {
         if (value === this._height) return;
 
         this._height = value;
@@ -807,13 +786,12 @@ Object.defineProperty(SpriteComponent.prototype, "height", {
             this._updateTransform();
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "batchGroupId", {
-    get: function () {
+    get batchGroupId() {
         return this._batchGroupId;
-    },
-    set: function (value) {
+    }
+
+    set batchGroupId(value) {
         if (this._batchGroupId === value)
             return;
 
@@ -834,35 +812,32 @@ Object.defineProperty(SpriteComponent.prototype, "batchGroupId", {
             }
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "autoPlayClip", {
-    get: function () {
+    get autoPlayClip() {
         return this._autoPlayClip;
-    },
-    set: function (value) {
+    }
+
+    set autoPlayClip(value) {
         this._autoPlayClip = value instanceof SpriteAnimationClip ? value.name : value;
         this._tryAutoPlay();
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "drawOrder", {
-    get: function () {
+    get drawOrder() {
         return this._drawOrder;
-    },
-    set: function (value) {
+    }
+
+    set drawOrder(value) {
         this._drawOrder = value;
         if (this._meshInstance) {
             this._meshInstance.drawOrder = value;
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "layers", {
-    get: function () {
+    get layers() {
         return this._layers;
-    },
-    set: function (value) {
+    }
+
+    set layers(value) {
         if (this._addedModel) {
             this._hideModel();
         }
@@ -878,60 +853,58 @@ Object.defineProperty(SpriteComponent.prototype, "layers", {
             this._showModel();
         }
     }
-});
 
-Object.defineProperty(SpriteComponent.prototype, "aabb", {
-    get: function () {
+    get aabb() {
         if (this._meshInstance) {
             return this._meshInstance.aabb;
         }
 
         return null;
     }
-});
 
-// Events Documentation
+    // Events Documentation
 
-/**
- * @event
- * @name pc.SpriteComponent#play
- * @description Fired when an animation clip starts playing.
- * @param {pc.SpriteAnimationClip} clip - The clip that started playing.
- */
+    /**
+     * @event
+     * @name SpriteComponent#play
+     * @description Fired when an animation clip starts playing.
+     * @param {SpriteAnimationClip} clip - The clip that started playing.
+     */
 
-/**
- * @event
- * @name pc.SpriteComponent#pause
- * @description Fired when an animation clip is paused.
- * @param {pc.SpriteAnimationClip} clip - The clip that was paused.
- */
+    /**
+     * @event
+     * @name SpriteComponent#pause
+     * @description Fired when an animation clip is paused.
+     * @param {SpriteAnimationClip} clip - The clip that was paused.
+     */
 
-/**
- * @event
- * @name pc.SpriteComponent#resume
- * @description Fired when an animation clip is resumed.
- * @param {pc.SpriteAnimationClip} clip - The clip that was resumed.
- */
+    /**
+     * @event
+     * @name SpriteComponent#resume
+     * @description Fired when an animation clip is resumed.
+     * @param {SpriteAnimationClip} clip - The clip that was resumed.
+     */
 
-/**
- * @event
- * @name pc.SpriteComponent#stop
- * @description Fired when an animation clip is stopped.
- * @param {pc.SpriteAnimationClip} clip - The clip that was stopped.
- */
+    /**
+     * @event
+     * @name SpriteComponent#stop
+     * @description Fired when an animation clip is stopped.
+     * @param {SpriteAnimationClip} clip - The clip that was stopped.
+     */
 
-/**
- * @event
- * @name pc.SpriteComponent#end
- * @description Fired when an animation clip stops playing because it reached its ending.
- * @param {pc.SpriteAnimationClip} clip - The clip that ended.
- */
+    /**
+     * @event
+     * @name SpriteComponent#end
+     * @description Fired when an animation clip stops playing because it reached its ending.
+     * @param {SpriteAnimationClip} clip - The clip that ended.
+     */
 
-/**
- * @event
- * @name pc.SpriteComponent#loop
- * @description Fired when an animation clip reached the end of its current loop.
- * @param {pc.SpriteAnimationClip} clip - The clip.
- */
+    /**
+     * @event
+     * @name SpriteComponent#loop
+     * @description Fired when an animation clip reached the end of its current loop.
+     * @param {SpriteAnimationClip} clip - The clip.
+     */
+}
 
 export { SpriteComponent };

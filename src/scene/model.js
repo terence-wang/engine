@@ -1,64 +1,63 @@
 import { RENDERSTYLE_WIREFRAME } from './constants.js';
 import { MeshInstance } from './mesh-instance.js';
 import { MorphInstance } from './morph-instance.js';
-import { SkinInstance } from './skin.js';
+import { SkinInstance } from './skin-instance.js';
 
 /**
  * @class
- * @name pc.Model
+ * @name Model
  * @classdesc A model is a graphical object that can be added to or removed from a scene.
  * It contains a hierarchy and any number of mesh instances.
  * @description Creates a new model.
  * @example
  * // Create a new model
  * var model = new pc.Model();
- * @property {pc.GraphNode} graph The root node of the model's graph node hierarchy.
- * @property {pc.MeshInstance[]} meshInstances An array of MeshInstances contained in this model.
- * @property {pc.SkinInstance[]} skinInstances An array of SkinInstances contained in this model.
- * @property {pc.MorphInstance[]} morphInstances An array of MorphInstances contained in this model.
+ * @property {GraphNode} graph The root node of the model's graph node hierarchy.
+ * @property {MeshInstance[]} meshInstances An array of MeshInstances contained in this model.
+ * @property {SkinInstance[]} skinInstances An array of SkinInstances contained in this model.
+ * @property {MorphInstance[]} morphInstances An array of MorphInstances contained in this model.
  */
-function Model() {
-    this.graph = null;
-    this.meshInstances = [];
-    this.skinInstances = [];
-    this.morphInstances = [];
+class Model {
+    constructor() {
+        this.graph = null;
+        this.meshInstances = [];
+        this.skinInstances = [];
+        this.morphInstances = [];
 
-    this.cameras = [];
-    this.lights = [];
+        this.cameras = [];
+        this.lights = [];
 
-    this._shadersVersion = 0;
+        this._shadersVersion = 0;
 
-    // used by the model component to flag that this
-    // model has been assigned
-    this._immutable = false;
-}
+        // used by the model component to flag that this model has been assigned
+        this._immutable = false;
+    }
 
-Object.assign(Model.prototype, {
-    getGraph: function () {
+    getGraph() {
         return this.graph;
-    },
+    }
 
-    setGraph: function (graph) {
+    setGraph(graph) {
         this.graph = graph;
-    },
+    }
 
-    getCameras: function () {
+    getCameras() {
         return this.cameras;
-    },
+    }
 
-    setCameras: function (cameras) {
+    setCameras(cameras) {
         this.cameras = cameras;
-    },
+    }
 
-    getLights: function () {
+    getLights() {
         return this.lights;
-    },
+    }
 
-    setLights: function (lights) {
+    setLights(lights) {
         this.lights = lights;
-    },
+    }
 
-    getMaterials: function () {
+    getMaterials() {
         var i;
         var materials = [];
         for (i = 0; i < this.meshInstances.length; i++) {
@@ -68,19 +67,19 @@ Object.assign(Model.prototype, {
             }
         }
         return materials;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Model#clone
+     * @name Model#clone
      * @description Clones a model. The returned model has a newly created hierarchy
      * and mesh instances, but meshes are shared between the clone and the specified
      * model.
-     * @returns {pc.Model} A clone of the specified model.
+     * @returns {Model} A clone of the specified model.
      * @example
      * var clonedModel = model.clone();
      */
-    clone: function () {
+    clone() {
         var i, j;
 
         // Duplicate the node hierarchy
@@ -133,7 +132,7 @@ Object.assign(Model.prototype, {
         for (i = 0; i < this.meshInstances.length; i++) {
             var meshInstance = this.meshInstances[i];
             var nodeIndex = srcNodes.indexOf(meshInstance.node);
-            var cloneMeshInstance = new MeshInstance(cloneNodes[nodeIndex], meshInstance.mesh, meshInstance.material);
+            var cloneMeshInstance = new MeshInstance(meshInstance.mesh, meshInstance.material, cloneNodes[nodeIndex]);
 
             if (meshInstance.skinInstance) {
                 var skinInstanceIndex = this.skinInstances.indexOf(meshInstance.skinInstance);
@@ -157,82 +156,40 @@ Object.assign(Model.prototype, {
         clone.getGraph().syncHierarchy();
 
         return clone;
-    },
+    }
 
     /**
      * @function
-     * @name pc.Model#destroy
+     * @name Model#destroy
      * @description Destroys skinning texture and possibly deletes vertex/index buffers of a model.
      * Mesh is reference-counted, so buffers are only deleted if all models with referencing mesh instances were deleted.
      * That means all in-scene models + the "base" one (asset.resource) which is created when the model is parsed.
      * It is recommended to use asset.unload() instead, which will also remove the model from the scene.
      */
-    destroy: function () {
+    destroy() {
         var meshInstances = this.meshInstances;
-        var meshInstance, mesh, skin, morph, boneTex;
         for (var i = 0; i < meshInstances.length; i++) {
-            meshInstance = meshInstances[i];
-
-            mesh = meshInstance.mesh;
-            if (mesh) {
-                meshInstance.mesh = null;   // this calls decReference on mesh
-                if (mesh.refCount < 1) {
-                    mesh.destroy();
-                }
-            }
-
-            skin = meshInstance.skinInstance;
-            if (skin) {
-                boneTex = skin.boneTexture;
-                if (boneTex) {
-                    boneTex.destroy();
-                }
-            }
-            meshInstance.skinInstance = null;
-
-            morph = meshInstance.morphInstance;
-            if (morph) {
-                morph.destroy();
-            }
-            meshInstance.morphInstance = null;
-
-            meshInstance.material = null; // make sure instance and material clear references
+            meshInstances[i].destroy();
         }
-    },
+        this.meshInstances.length = 0;
+    }
 
     /**
      * @function
-     * @name pc.Model#generateWireframe
+     * @name Model#generateWireframe
      * @description Generates the necessary internal data for a model to be
      * renderable as wireframe. Once this function has been called, any mesh
      * instance in the model can have its renderStyle property set to
-     * pc.RENDERSTYLE_WIREFRAME.
+     * {@link RENDERSTYLE_WIREFRAME}.
      * @example
      * model.generateWireframe();
      * for (var i = 0; i < model.meshInstances.length; i++) {
      *     model.meshInstances[i].renderStyle = pc.RENDERSTYLE_WIREFRAME;
      * }
      */
-    generateWireframe: function () {
-        var i;
-        var mesh;
-
-        // Build an array of unique meshes in this model
-        var meshes = [];
-        for (i = 0; i < this.meshInstances.length; i++) {
-            mesh = this.meshInstances[i].mesh;
-            if (meshes.indexOf(mesh) === -1) {
-                meshes.push(mesh);
-            }
-        }
-
-        for (i = 0; i < meshes.length; ++i) {
-            mesh = meshes[i];
-            if (!mesh.primitive[RENDERSTYLE_WIREFRAME]) {
-                mesh.generateWireframe();
-            }
-        }
+    generateWireframe() {
+        MeshInstance._prepareRenderStyleForArray(this.meshInstances, RENDERSTYLE_WIREFRAME);
     }
-});
+}
 
 export { Model };

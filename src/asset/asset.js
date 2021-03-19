@@ -3,15 +3,16 @@ import { Tags } from '../core/tags.js';
 
 import { EventHandler } from '../core/event-handler.js';
 
-import { I18n } from '../i18n/i18n.js';
+import { findAvailableLocale } from '../i18n/utils.js';
 
 import { ABSOLUTE_URL } from './constants.js';
 import { AssetVariants } from './asset-variants.js';
+import { getApplication } from '../framework/globals.js';
 
 // auto incrementing number for asset ids
 var assetIdCounter = -1;
 
-var VARIANT_SUPPORT = {
+const VARIANT_SUPPORT = {
     pvr: 'extCompressedTexturePVRTC',
     dxt: 'extCompressedTextureS3TC',
     etc2: 'extCompressedTextureETC',
@@ -19,21 +20,21 @@ var VARIANT_SUPPORT = {
     basis: 'canvas' // dummy, basis is always supported
 };
 
-var VARIANT_DEFAULT_PRIORITY = ['pvr', 'dxt', 'etc2', 'etc1', 'basis'];
+const VARIANT_DEFAULT_PRIORITY = ['pvr', 'dxt', 'etc2', 'etc1', 'basis'];
 
 /**
  * @class
- * @name pc.Asset
- * @augments pc.EventHandler
+ * @name Asset
+ * @augments EventHandler
  * @classdesc An asset record of a file or data resource that can be loaded by the engine.
  * The asset contains three important fields:
  *
  * * `file`: contains the details of a file (filename, url) which contains the resource data, e.g. an image file for a texture asset.
  * * `data`: contains a JSON blob which contains either the resource data for the asset (e.g. material data) or additional data for the file (e.g. material mappings for a model).
  * * `options`: contains a JSON blob with handler-specific load options.
- * * `resource`: contains the final resource when it is loaded. (e.g. a {@link pc.StandardMaterial} or a {@link pc.Texture}).
+ * * `resource`: contains the final resource when it is loaded. (e.g. a {@link StandardMaterial} or a {@link Texture}).
  *
- * See the {@link pc.AssetRegistry} for details on loading resources from assets.
+ * See the {@link AssetRegistry} for details on loading resources from assets.
  * @description Create a new Asset record. Generally, Assets are created in the loading process and you won't need to create them by hand.
  * @param {string} name - A non-unique but human-readable name which can be later used to retrieve the asset.
  * @param {string} type - Type of asset. One of ["animation", "audio", "binary", "cubemap", "css", "font", "json", "html", "material", "model", "script", "shader", "text", "texture"]
@@ -43,8 +44,8 @@ var VARIANT_DEFAULT_PRIORITY = ['pvr', 'dxt', 'etc2', 'etc1', 'basis'];
  *     filename: "filename.txt",
  *     url: "/example/filename.txt"
  * };
- * @param {object} [data] - JSON object with additional data about the asset (e.g. for texture and model assets) or contains the asset data itself (e.g. in the case of materials)
- * @param {object} [options] - The asset handler options. For container options see {@link pc.ContainerHandler}
+ * @param {object} [data] - JSON object with additional data about the asset. (e.g. for texture and model assets) or contains the asset data itself (e.g. in the case of materials)
+ * @param {object} [options] - The asset handler options. For container options see {@link ContainerHandler}
  * @param {boolean} [options.crossOrigin] - For use with texture resources. For browser-supported image formats only, enable cross origin.
  * @example
  * var asset = new pc.Asset("a texture", "texture", {
@@ -53,108 +54,113 @@ var VARIANT_DEFAULT_PRIORITY = ['pvr', 'dxt', 'etc2', 'etc1', 'basis'];
  * @property {string} name The name of the asset
  * @property {number} id The asset id
  * @property {string} type The type of the asset. One of ["animation", "audio", "binary", "cubemap", "css", "font", "json", "html", "material", "model", "script", "shader", "text", "texture"]
- * @property {pc.Tags} tags Interface for tagging. Allows to find assets by tags using {@link pc.AssetRegistry#findByTag} method.
+ * @property {Tags} tags Interface for tagging. Allows to find assets by tags using {@link AssetRegistry#findByTag} method.
  * @property {object} file The file details or null if no file
  * @property {string} [file.url] The URL of the resource file that contains the asset data
- * @property {string} [file.filename] The filename of the resource file or null if no filename was set (e.g from using {@link pc.AssetRegistry#loadFromUrl})
- * @property {number} [file.size] The size of the resource file or null if no size was set (e.g from using {@link pc.AssetRegistry#loadFromUrl})
- * @property {string} [file.hash] The MD5 hash of the resource file data and the Asset data field or null if hash was set (e.g from using {@link pc.AssetRegistry#loadFromUrl})
+ * @property {string} [file.filename] The filename of the resource file or null if no filename was set (e.g from using {@link AssetRegistry#loadFromUrl})
+ * @property {number} [file.size] The size of the resource file or null if no size was set (e.g from using {@link AssetRegistry#loadFromUrl})
+ * @property {string} [file.hash] The MD5 hash of the resource file data and the Asset data field or null if hash was set (e.g from using {@link AssetRegistry#loadFromUrl})
  * @property {ArrayBuffer} [file.contents] Optional file contents. This is faster than wrapping the data
  * in a (base64 encoded) blob. Currently only used by container assets.
- * @property {object} [data] Optional JSON data that contains either the complete resource data (e.g. in the case of a material) or additional data (e.g. in the case of a model it contains mappings from mesh to material)
+ * @property {object} [data] Optional JSON data that contains either the complete resource data. (e.g. in the case of a material) or additional data (e.g. in the case of a model it contains mappings from mesh to material)
  * @property {object} [options] - Optional JSON data that contains the asset handler options.
- * @property {object} resource A reference to the resource when the asset is loaded. e.g. a {@link pc.Texture} or a {@link pc.Model}
+ * @property {object} resource A reference to the resource when the asset is loaded. e.g. a {@link Texture} or a {@link Model}
  * @property {Array} resources A reference to the resources of the asset when it's loaded. An asset can hold more runtime resources than one e.g. cubemaps
  * @property {boolean} preload If true the asset will be loaded during the preload phase of application set up.
  * @property {boolean} loaded True if the resource is loaded. e.g. if asset.resource is not null
  * @property {boolean} loading True if the resource is currently being loaded
- * @property {pc.AssetRegistry} registry The asset registry that this Asset belongs to
+ * @property {AssetRegistry} registry The asset registry that this Asset belongs to
  */
-function Asset(name, type, file, data, options) {
-    EventHandler.call(this);
+class Asset extends EventHandler {
+    constructor(name, type, file, data, options) {
+        super();
 
-    this._id = assetIdCounter--;
+        this._id = assetIdCounter--;
 
-    this.name = name || '';
-    this.type = type;
-    this.tags = new Tags(this);
-    this._preload = false;
+        this.name = name || '';
+        this.type = type;
+        this.tags = new Tags(this);
+        this._preload = false;
 
-    this.variants = new AssetVariants(this);
+        this.variants = new AssetVariants(this);
 
-    this._file = null;
-    this._data = data || { };
-    this.options = options || { };
+        this._file = null;
+        this._data = data || { };
+        this.options = options || { };
 
-    // This is where the loaded resource(s) will be
-    this._resources = [];
+        // This is where the loaded resource(s) will be
+        this._resources = [];
 
-    // a string-assetId dictionary that maps
-    // locale to asset id
-    this._i18n = {};
+        // a string-assetId dictionary that maps
+        // locale to asset id
+        this._i18n = {};
 
-    // Is resource loaded
-    this.loaded = false;
-    this.loading = false;
+        // Is resource loaded
+        this.loaded = false;
+        this.loading = false;
 
-    this.registry = null;
+        this.registry = null;
 
-    if (file) this.file = file;
-}
-Asset.prototype = Object.create(EventHandler.prototype);
-Asset.prototype.constructor = Asset;
+        if (file) this.file = file;
+    }
 
-/**
- * @event
- * @name pc.Asset#load
- * @description Fired when the asset has completed loading.
- * @param {pc.Asset} asset - The asset that was loaded.
- */
-
-/**
- * @event
- * @name pc.Asset#remove
- * @description Fired when the asset is removed from the asset registry.
- * @param {pc.Asset} asset - The asset that was removed.
- */
-
-/**
- * @event
- * @name pc.Asset#error
- * @description Fired if the asset encounters an error while loading.
- * @param {string} err - The error message.
- * @param {pc.Asset} asset - The asset that generated the error.
- */
-
-/**
- * @event
- * @name pc.Asset#change
- * @description Fired when one of the asset properties `file`, `data`, `resource` or `resources` is changed.
- * @param {pc.Asset} asset - The asset that was loaded.
- * @param {string} property - The name of the property that changed.
- * @param {*} value - The new property value.
- * @param {*} oldValue - The old property value.
- */
-
-/**
- * @event
- * @name pc.Asset#add:localized
- * @description Fired when we add a new localized asset id to the asset.
- * @param {string} locale - The locale.
- * @param {number} assetId - The asset id we added.
- */
-
-/**
- * @event
- * @name pc.Asset#remove:localized
- * @description Fired when we remove a localized asset id from the asset.
- * @param {string} locale - The locale.
- * @param {number} assetId - The asset id we removed.
- */
-
-Object.assign(Asset.prototype, {
     /**
-     * @name pc.Asset#getFileUrl
+     * @event
+     * @name Asset#load
+     * @description Fired when the asset has completed loading.
+     * @param {Asset} asset - The asset that was loaded.
+     */
+
+    /**
+     * @event
+     * @name Asset#unload
+     * @description Fired just before the asset unloads the resource. This allows for the opportunity to prepare for an asset that will be unloaded. E.g. Changing the texture of a model to a default before the one it was using is unloaded.
+     * @param {Asset} asset - The asset that is due to be unloaded.
+     */
+
+    /**
+     * @event
+     * @name Asset#remove
+     * @description Fired when the asset is removed from the asset registry.
+     * @param {Asset} asset - The asset that was removed.
+     */
+
+    /**
+     * @event
+     * @name Asset#error
+     * @description Fired if the asset encounters an error while loading.
+     * @param {string} err - The error message.
+     * @param {Asset} asset - The asset that generated the error.
+     */
+
+    /**
+     * @event
+     * @name Asset#change
+     * @description Fired when one of the asset properties `file`, `data`, `resource` or `resources` is changed.
+     * @param {Asset} asset - The asset that was loaded.
+     * @param {string} property - The name of the property that changed.
+     * @param {*} value - The new property value.
+     * @param {*} oldValue - The old property value.
+     */
+
+    /**
+     * @event
+     * @name Asset#add:localized
+     * @description Fired when we add a new localized asset id to the asset.
+     * @param {string} locale - The locale.
+     * @param {number} assetId - The asset id we added.
+     */
+
+    /**
+     * @event
+     * @name Asset#remove:localized
+     * @description Fired when we remove a localized asset id from the asset.
+     * @param {string} locale - The locale.
+     * @param {number} assetId - The asset id we removed.
+     */
+
+    /**
+     * @name Asset#getFileUrl
      * @function
      * @description Return the URL required to fetch the file for this asset.
      * @returns {string} The URL.
@@ -162,7 +168,7 @@ Object.assign(Asset.prototype, {
      * var assets = app.assets.find("My Image", "texture");
      * var img = "&lt;img src='" + assets[0].getFileUrl() + "'&gt;";
      */
-    getFileUrl: function () {
+    getFileUrl() {
         var file = this.getPreferredFile();
 
         if (!file || !file.url)
@@ -180,36 +186,37 @@ Object.assign(Asset.prototype, {
         }
 
         return url;
-    },
+    }
 
-    getPreferredFile: function () {
+    getPreferredFile() {
         if (!this.file)
             return null;
 
         if (this.type === 'texture' || this.type === 'textureatlas' || this.type === 'bundle') {
-            var app = this.registry._loader._app;
-            var device = app.graphicsDevice;
+            var app = this.registry?._loader?._app || getApplication();
+            var device = app?.graphicsDevice;
+            if (device) {
+                for (var i = 0, len = VARIANT_DEFAULT_PRIORITY.length; i < len; i++) {
+                    var variant = VARIANT_DEFAULT_PRIORITY[i];
+                    // if the device supports the variant
+                    if (! device[VARIANT_SUPPORT[variant]]) continue;
 
-            for (var i = 0, len = VARIANT_DEFAULT_PRIORITY.length; i < len; i++) {
-                var variant = VARIANT_DEFAULT_PRIORITY[i];
-                // if the device supports the variant
-                if (! device[VARIANT_SUPPORT[variant]]) continue;
+                    // if the variant exists in the asset then just return it
+                    if (this.file.variants[variant]) {
+                        return this.file.variants[variant];
+                    }
 
-                // if the variant exists in the asset then just return it
-                if (this.file.variants[variant]) {
-                    return this.file.variants[variant];
-                }
+                    // if the variant does not exist but the asset is in a bundle
+                    // and the bundle contain assets with this variant then return the default
+                    // file for the asset
+                    if (app.enableBundles) {
+                        var bundles = app.bundles.listBundlesForAsset(this);
+                        if (! bundles) continue;
 
-                // if the variant does not exist but the asset is in a bundle
-                // and the bundle contain assets with this variant then return the default
-                // file for the asset
-                if (app.enableBundles) {
-                    var bundles = app.bundles.listBundlesForAsset(this);
-                    if (! bundles) continue;
-
-                    for (var j = 0, len2 = bundles.length; j < len2; j++) {
-                        if (bundles[j].file && bundles[j].file.variants && bundles[j].file.variants[variant]) {
-                            return this.file;
+                        for (var j = 0, len2 = bundles.length; j < len2; j++) {
+                            if (bundles[j].file && bundles[j].file.variants && bundles[j].file.variants[variant]) {
+                                return this.file;
+                            }
                         }
                     }
                 }
@@ -217,69 +224,69 @@ Object.assign(Asset.prototype, {
         }
 
         return this.file;
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pcAsset#getAbsoluteUrl
+     * @name Asset#getAbsoluteUrl
      * @description Construct an asset URL from this asset's location and a relative path
      * @param {string} relativePath - The relative path to be concatenated to this asset's base url
      * @returns {string} Resulting URL of the asset
      */
-    getAbsoluteUrl: function (relativePath) {
+    getAbsoluteUrl(relativePath) {
         var base = path.getDirectory(this.file.url);
         return path.join(base, relativePath);
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.Asset#getLocalizedAssetId
+     * @name Asset#getLocalizedAssetId
      * @param {string} locale - The desired locale e.g. Ar-AR.
      * @description Returns the asset id of the asset that corresponds to the specified locale.
      * @returns {number} An asset id or null if there is no asset specified for the desired locale.
      */
-    getLocalizedAssetId: function (locale) {
+    getLocalizedAssetId(locale) {
         // tries to find either the desired locale or a fallback locale
-        locale = I18n.findAvailableLocale(locale, this._i18n);
+        locale = findAvailableLocale(locale, this._i18n);
         return this._i18n[locale] || null;
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.Asset#addLocalizedAssetId
+     * @name Asset#addLocalizedAssetId
      * @param {string} locale - The locale e.g. Ar-AR.
      * @param {number} assetId - The asset id.
-     * @description Adds a replacement asset id for the specified locale. When the locale in {@link pc.Application#i18n} changes then
-     * references to this asset will be replaced with the specified asset id. (Currently only supported by the {@link pc.ElementComponent}).
+     * @description Adds a replacement asset id for the specified locale. When the locale in {@link Application#i18n} changes then
+     * references to this asset will be replaced with the specified asset id. (Currently only supported by the {@link ElementComponent}).
      */
-    addLocalizedAssetId: function (locale, assetId) {
+    addLocalizedAssetId(locale, assetId) {
         this._i18n[locale] = assetId;
         this.fire('add:localized', locale, assetId);
-    },
+    }
 
     /**
      * @private
      * @function
-     * @name pc.Asset#removeLocalizedAssetId
+     * @name Asset#removeLocalizedAssetId
      * @param {string} locale - The locale e.g. Ar-AR.
      * @description Removes a localized asset.
      */
-    removeLocalizedAssetId: function (locale) {
+    removeLocalizedAssetId(locale) {
         var assetId = this._i18n[locale];
         if (assetId) {
             delete this._i18n[locale];
             this.fire('remove:localized', locale, assetId);
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.Asset#ready
+     * @name Asset#ready
      * @description Take a callback which is called as soon as the asset is loaded. If the asset is already loaded the callback is called straight away.
-     * @param {pc.callbacks.AssetReady} callback - The function called when the asset is ready. Passed the (asset) arguments.
+     * @param {callbacks.AssetReady} callback - The function called when the asset is ready. Passed the (asset) arguments.
      * @param {object} [scope] - Scope object to use when calling the callback.
      * @example
      * var asset = app.assets.find("My Asset");
@@ -288,7 +295,7 @@ Object.assign(Asset.prototype, {
      * });
      * app.assets.load(asset);
      */
-    ready: function (callback, scope) {
+    ready(callback, scope) {
         scope = scope || this;
 
         if (this.resource) {
@@ -298,26 +305,26 @@ Object.assign(Asset.prototype, {
                 callback.call(scope, asset);
             });
         }
-    },
+    }
 
-    reload: function () {
+    reload() {
         // no need to be reloaded
         if (this.loaded) {
             this.loaded = false;
             this.registry.load(this);
         }
-    },
+    }
 
     /**
      * @function
-     * @name pc.Asset#unload
+     * @name Asset#unload
      * @description Destroys the associated resource and marks asset as unloaded.
      * @example
      * var asset = app.assets.find("My Asset");
      * asset.unload();
      * // asset.resource is null
      */
-    unload: function () {
+    unload() {
         if (!this.loaded && this._resources.length === 0)
             return;
 
@@ -343,24 +350,20 @@ Object.assign(Asset.prototype, {
             }
         }
     }
-});
 
-Object.defineProperty(Asset.prototype, 'id', {
-    get: function () {
+    get id() {
         return this._id;
-    },
+    }
 
-    set: function (value) {
+    set id(value) {
         this._id = value;
     }
-});
 
-Object.defineProperty(Asset.prototype, 'file', {
-    get: function () {
+    get file() {
         return this._file;
-    },
+    }
 
-    set: function (value) {
+    set file(value) {
         // fire change event when the file changes
         // so that we reload it if necessary
         // set/unset file property of file hash been changed
@@ -411,14 +414,12 @@ Object.defineProperty(Asset.prototype, 'file', {
             }
         }
     }
-});
 
-Object.defineProperty(Asset.prototype, 'data', {
-    get: function () {
+    get data() {
         return this._data;
-    },
+    }
 
-    set: function (value) {
+    set data(value) {
         // fire change event when data changes
         // because the asset might need reloading if that happens
         var old = this._data;
@@ -430,37 +431,32 @@ Object.defineProperty(Asset.prototype, 'data', {
                 this.registry._loader.patch(this, this.registry);
         }
     }
-});
 
-Object.defineProperty(Asset.prototype, 'resource', {
-    get: function () {
+    get resource() {
         return this._resources[0];
-    },
+    }
 
-    set: function (value) {
+    set resource(value) {
         var _old = this._resources[0];
         this._resources[0] = value;
         this.fire('change', this, 'resource', value, _old);
     }
-});
 
-Object.defineProperty(Asset.prototype, 'resources', {
-    get: function () {
+    get resources() {
         return this._resources;
-    },
+    }
 
-    set: function (value) {
+    set resources(value) {
         var _old = this._resources;
         this._resources = value;
         this.fire('change', this, 'resources', value, _old);
     }
-});
 
-Object.defineProperty(Asset.prototype, 'preload', {
-    get: function () {
+    get preload() {
         return this._preload;
-    },
-    set: function (value) {
+    }
+
+    set preload(value) {
         value = !!value;
         if (this._preload === value)
             return;
@@ -469,13 +465,12 @@ Object.defineProperty(Asset.prototype, 'preload', {
         if (this._preload && !this.loaded && !this.loading && this.registry)
             this.registry.load(this);
     }
-});
 
-Object.defineProperty(Asset.prototype, 'loadFaces', {
-    get: function () {
+    get loadFaces() {
         return this._loadFaces;
-    },
-    set: function (value) {
+    }
+
+    set loadFaces(value) {
         value = !!value;
         if (!this.hasOwnProperty('_loadFaces') || value !== this._loadFaces) {
             this._loadFaces = value;
@@ -487,6 +482,6 @@ Object.defineProperty(Asset.prototype, 'loadFaces', {
                 this.registry._loader.patch(this, this.registry);
         }
     }
-});
+}
 
 export { Asset };

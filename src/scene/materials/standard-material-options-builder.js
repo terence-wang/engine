@@ -3,16 +3,18 @@ import { _matTex2D } from '../../graphics/program-lib/programs/standard.js';
 import {
     PIXELFORMAT_DXT5, PIXELFORMAT_RGBA32F,
     TEXTURETYPE_RGBM, TEXTURETYPE_SWIZZLEGGGR
-} from '../../graphics/graphics.js';
+} from '../../graphics/constants.js';
 import {
     BLEND_NONE,
     GAMMA_NONE, GAMMA_SRGBHDR,
-    LIGHTTYPE_DIRECTIONAL, LIGHTTYPE_POINT, LIGHTTYPE_SPOT,
+    LIGHTTYPE_DIRECTIONAL, LIGHTTYPE_OMNI, LIGHTTYPE_SPOT,
     SHADER_FORWARDHDR,
     SHADERDEF_DIRLM, SHADERDEF_INSTANCING, SHADERDEF_LM, SHADERDEF_MORPH_POSITION, SHADERDEF_MORPH_NORMAL, SHADERDEF_NOSHADOW, SHADERDEF_MORPH_TEXTURE_BASED,
     SHADERDEF_SCREENSPACE, SHADERDEF_SKIN, SHADERDEF_TANGENTS, SHADERDEF_UV0, SHADERDEF_UV1, SHADERDEF_VCOLOR,
     TONEMAP_LINEAR
 } from '../constants.js';
+
+import { Quat } from '../../math/quat.js';
 
 function StandardMaterialOptionsBuilder() {
     this._mapXForms = null;
@@ -125,6 +127,8 @@ StandardMaterialOptionsBuilder.prototype._updateMaterialOptions = function (opti
     options.lightMapFormat = stdMat.lightMap ? (stdMat.lightMap.type === TEXTURETYPE_RGBM ? 1 : (stdMat.lightMap.format === PIXELFORMAT_RGBA32F ? 2 : 0)) : null;
     options.specularAntialias = stdMat.specularAntialias && (!!stdMat.normalMap) && (!!stdMat.normalMap.mipmaps) && !isPackedNormalMap;
     options.conserveEnergy = stdMat.conserveEnergy;
+    options.opacityFadesSpecular = stdMat.opacityFadesSpecular;
+    options.alphaFade = stdMat.alphaFade;
     options.occludeSpecular = stdMat.occludeSpecular;
     options.occludeSpecularFloat = (stdMat.occludeSpecularIntensity !== 1.0);
     options.occludeDirect = stdMat.occludeDirect;
@@ -140,11 +144,13 @@ StandardMaterialOptionsBuilder.prototype._updateMaterialOptions = function (opti
     options.msdf = !!stdMat.msdfMap;
     options.twoSidedLighting = stdMat.twoSidedLighting;
     options.pixelSnap = stdMat.pixelSnap;
-    options.aoMapUv = stdMat.aoUvSet; // backwards componen
+    options.aoMapUv = stdMat.aoUvSet; // backwards compatibility
     options.diffuseDetail = !!stdMat.diffuseMap;
     options.normalDetail = !!stdMat.normalMap;
     options.diffuseDetailMode = stdMat.diffuseDetailMode;
     options.detailModes = !!options.diffuseDetail;
+    options.clearCoatTint = (stdMat.clearCoat !== 1.0) ? 1 : 0;
+    options.clearCoatGlossTint = (stdMat.clearCoatGlossiness !== 1.0) ? 1 : 0;
 };
 
 StandardMaterialOptionsBuilder.prototype._updateEnvOptions = function (options, stdMat, scene, prefilteredCubeMap128) {
@@ -181,6 +187,11 @@ StandardMaterialOptionsBuilder.prototype._updateEnvOptions = function (options, 
     options.fixSeams = prefilteredCubeMap128 ? prefilteredCubeMap128.fixCubemapSeams : (stdMat.cubeMap ? stdMat.cubeMap.fixCubemapSeams : false);
     options.prefilteredCubemap = !!prefilteredCubeMap128;
     options.skyboxIntensity = (prefilteredCubeMap128 && globalSky128 && prefilteredCubeMap128 === globalSky128) && (scene.skyboxIntensity !== 1);
+
+    // TODO: add a test for if non skybox cubemaps have rotation (when this is supported) - for now assume no non-skybox cubemap rotation
+    options.useCubeMapRotation = (!stdMat.cubeMap && !stdMat.prefilteredCubeMap128 && stdMat.useSkybox && scene && scene.skyboxRotation && !scene.skyboxRotation.equals(Quat.IDENTITY));
+
+    options.useRightHandedCubeMap = stdMat.cubeMap ? stdMat.cubeMap._isRenderTarget : (!stdMat.prefilteredCubeMap128 && stdMat.useSkybox && scene && scene._skyboxIsRenderTarget);
 };
 
 StandardMaterialOptionsBuilder.prototype._updateLightOptions = function (options, stdMat, objDefs, sortedLights, staticLightList) {
@@ -213,7 +224,7 @@ StandardMaterialOptionsBuilder.prototype._updateLightOptions = function (options
         var mask = objDefs ? (objDefs >> 16) : 1;
         if (sortedLights) {
             this._collectLights(LIGHTTYPE_DIRECTIONAL, sortedLights[LIGHTTYPE_DIRECTIONAL], lightsFiltered, mask);
-            this._collectLights(LIGHTTYPE_POINT, sortedLights[LIGHTTYPE_POINT], lightsFiltered, mask, staticLightList);
+            this._collectLights(LIGHTTYPE_OMNI, sortedLights[LIGHTTYPE_OMNI], lightsFiltered, mask, staticLightList);
             this._collectLights(LIGHTTYPE_SPOT, sortedLights[LIGHTTYPE_SPOT], lightsFiltered, mask, staticLightList);
         }
         options.lights = lightsFiltered;

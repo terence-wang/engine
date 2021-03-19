@@ -1,9 +1,11 @@
 /**
  * @private
  * @class
- * @name pc.ComponentData
+ * @name ComponentData
  * @classdesc Base class for Component data storage.
  */
-function ComponentData() {}
+class ComponentData {
+    constructor() {}
+}
 
 export { ComponentData };
